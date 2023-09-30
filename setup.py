@@ -1,3 +1,7 @@
+def read_requirements():
+    with open('requirements.txt', 'r') as file:
+        return file.readlines()
+
 from setuptools import setup, find_packages
 
 setup(
@@ -10,6 +14,7 @@ setup(
             'api-warden = watcher.cli:main',
         ],
     },
+    install_requires=read_requirements(),
 
 )
 
