@@ -1,7 +1,7 @@
 import argparse
-from config import load_config, edit_config
-from watcher import LogWatcher
-from api import send_alert_to_api
+from warden.config import load_config, edit_config
+from warden.watcher import Warden 
+from warden.api import send_alert_to_api
 
 def watch_logs(args):
     """Starts watching logs based on the configuration."""
@@ -13,7 +13,7 @@ def watch_logs(args):
         print(f"Detected pattern '{pattern}' in line: {line}")
         send_alert_to_api(config["api"]["endpoint"], pattern, line, api_key=config["api"]["key"])
 
-    watcher = LogWatcher(log_file_path, patterns, detected_change)
+    watcher = Warden(log_file_path, patterns, detected_change)
     watcher.start()
 
 def edit_configuration(args):
@@ -23,7 +23,7 @@ def edit_configuration(args):
     print(f"Configuration '{args.key}' updated to '{args.value}'.")
 
 def main():
-    parser = argparse.ArgumentParser(description="LogWatcher - Watch logs and alert on specific patterns.")
+    parser = argparse.ArgumentParser(description="Warden - Watch logs and alert on specific patterns.")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to the configuration file.")
 
     subparsers = parser.add_subparsers(title="commands")
