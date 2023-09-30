@@ -1,4 +1,5 @@
 import requests
+from warden.logger import logger
 
 # Error class to handle API specific issues
 class APIError(Exception):
@@ -18,6 +19,7 @@ def send_alert_to_api(endpoint_url, pattern_detected, message_content, api_key=N
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
+    logger.info("Sending alert to API.")
     
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'

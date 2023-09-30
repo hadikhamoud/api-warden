@@ -1,7 +1,8 @@
-logfile: /path/to/process.log
+logfile: /Users/hadihamoud/Desktop/logs/
 patterns:
   - ERROR
   - CRITICAL
+  
 api:
   url: https://api.example.com/alert
   method: POST
