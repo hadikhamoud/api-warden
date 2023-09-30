@@ -5,6 +5,11 @@ setup(
     version='0.1',
     packages=find_packages(),
     scripts=['bin/warden'], 
+    entry_points={
+        'console_scripts': [
+            'api-warden = watcher.cli:main',
+        ],
+    },
 
 )
 
