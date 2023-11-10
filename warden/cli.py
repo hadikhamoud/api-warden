@@ -7,6 +7,7 @@ from warden.logger import logger
 from warden.process_manager import ProcessManager
 from warden.pdb_watcher import PDBWatcher
 from warden.api import send_alert_to_api
+from warden.stats import get_call_details
 
 process_manager = ProcessManager()
 
@@ -41,7 +42,9 @@ def watch_pdb(args):
 
     def send_alert(endpoint_url, *args, **kwargs):
         print("sending alert to api")
-        send_alert_to_api(endpoint_url, *args, **kwargs)
+        payload = {"source": get_call_details(pid),
+                   "type": "pdb"}
+        send_alert_to_api(endpoint_url, *args, **kwargs, payload = payload)
 
     watcher = PDBWatcher(pid, throttle, check_interval, num_of_checks, long_pause_duration)
     watcher.watch(send_alert, endpoint_url)

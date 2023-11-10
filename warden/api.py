@@ -25,17 +25,15 @@ def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = Non
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'
     
-    payload = {
-        "pattern_detected": pattern_detected,
-        "message_content": message_content,
-        "call_details": get_call_details(kwargs['pid'])
-    }
+    payload = kwargs['payload']
+    
 
 
 
     try:
         response = requests.post(endpoint_url, headers=headers, json=payload)
-        response.raise_for_status()  # Raises a HTTPError if the HTTP request returned an unsuccessful status code
+        response.raise_for_status() 
+        print(response) # Raises a HTTPError if the HTTP request returned an unsuccessful status code
         return response
 
     except requests.RequestException as e:

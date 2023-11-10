@@ -55,7 +55,7 @@ class PDBWatcher:
                 consecutive_S_plus += 1
 
                 if consecutive_S_plus >= self.num_of_checks:
-                    alert_func(*args, pid = self.pid)
+                    alert_func(*args, **kwargs)
                     consecutive_S_plus = 0
                     is_long_pause_active = True  # Activate the long pause
 
