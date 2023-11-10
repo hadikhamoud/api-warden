@@ -11,7 +11,7 @@ setup(
     scripts=['bin/api-warden'], 
     entry_points={
         'console_scripts': [
-            'api-warden = cli:main',
+            'api-warden = warden.cli:main',
         ],
     },
     install_requires=read_requirements(),
