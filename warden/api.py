@@ -5,7 +5,7 @@ from warden.logger import logger
 class APIError(Exception):
     pass
 
-def send_alert_to_api(endpoint_url, pattern_detected, message_content, api_key=None):
+def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = None, api_key=None):
     """
     Sends an alert to the given API endpoint about a detected pattern.
 

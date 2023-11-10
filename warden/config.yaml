@@ -4,7 +4,9 @@ patterns:
   - CRITICAL
   
 api:
-  url: https://api.example.com/alert
+  endpoint: https://api.example.com/alert
   method: POST
   headers:
     Authorization: Bearer TOKEN
+
+

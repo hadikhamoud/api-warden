@@ -6,6 +6,7 @@ from warden.watcher import Warden
 from warden.logger import logger
 from warden.process_manager import ProcessManager
 from warden.pdb_watcher import PDBWatcher
+from warden.api import send_alert_to_api
 
 process_manager = ProcessManager()
 
@@ -29,17 +30,18 @@ def watch_logs(args):
 
 def watch_pdb(args):
     logger.debug('Entered watch_pdb function.')
-    # config = load_config(args.config)
+    config = load_config(args.config)
     pid = args.pid
     throttle = args.throttle
     check_interval = args.check_interval
     num_of_checks = args.num_of_checks
     long_pause_duration = args.long_pause_duration
+    endpoint_url = config["api"]["endpoint"]
     # log_file_path = config["logfile"]
 
-    def send_alert(pid):
+    def send_alert(endpoint_url):
         print("here watching bruv")
-        # send_alert_to_api(pid)
+        send_alert_to_api(endpoint_url)
 
     watcher = PDBWatcher(pid, throttle, check_interval, num_of_checks, long_pause_duration)
     watcher.watch(send_alert)
