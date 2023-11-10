@@ -29,19 +29,19 @@ def watch_logs(args):
 
 def watch_pdb(args):
     logger.debug('Entered watch_pdb function.')
-    config = load_config(args.config)
+    # config = load_config(args.config)
     pid = args.pid
     throttle = args.throttle
     check_interval = args.check_interval
     num_of_checks = args.num_of_checks
     long_pause_duration = args.long_pause_duration
-    log_file_path = config["logfile"]
+    # log_file_path = config["logfile"]
 
     def send_alert(pid):
         print("here watching bruv")
         # send_alert_to_api(pid)
 
-    watcher = PDBWatcher(pid, log_file_path, throttle, check_interval, num_of_checks, long_pause_duration)
+    watcher = PDBWatcher(pid, throttle, check_interval, num_of_checks, long_pause_duration)
     watcher.watch(send_alert)
 
 

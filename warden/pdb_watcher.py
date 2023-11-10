@@ -1,12 +1,10 @@
 import subprocess
 import time
-import logging
 import platform
 
 class PDBWatcher:
-    def __init__(self, pid, log_file_path, throttle, check_interval, num_of_checks, long_pause_duration):
+    def __init__(self, pid, throttle, check_interval, num_of_checks, long_pause_duration):
         self.pid = pid
-        self.log_file_path = log_file_path
         self.throttle = throttle
         self.check_interval = check_interval
         self.num_of_checks = num_of_checks
@@ -14,7 +12,6 @@ class PDBWatcher:
 
 
 
-        logging.basicConfig(filename=self.log_file_path, level=logging.DEBUG)
 
     def get_process_state_unix(self):
         try:
@@ -43,17 +40,16 @@ class PDBWatcher:
 
         while True:
             if is_long_pause_active:
-                logging.debug(f"Long pause active for {self.long_pause_duration} seconds.\n")
                 time.sleep(self.long_pause_duration)
                 is_long_pause_active = False  # Reset the long pause flag
 
             state = self.get_process_state()
 
             if state is None:
-                logging.debug(f"Process {self.pid} is no longer running. Exiting.\n")
+                
                 break
             elif 'S+' in state:
-                logging.debug(f"Process {self.pid} is likely waiting in pdb.\n")
+            
                 consecutive_S_plus += 1
 
                 if consecutive_S_plus >= self.num_of_checks:
@@ -63,7 +59,7 @@ class PDBWatcher:
 
                 time.sleep(self.throttle)
             else:
-                logging.debug(f"Process {self.pid} is running.\n")
+            
                 consecutive_S_plus = 0  
 
             time.sleep(self.check_interval) 
