@@ -6,12 +6,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='api-warden',
-    version='0.1',
+    version='0.1-dev',
     packages=find_packages(),
     scripts=['bin/api-warden'], 
     entry_points={
         'console_scripts': [
-            'api-warden = cli:main',
+            'api-warden = warden.cli:main',
         ],
     },
     install_requires=read_requirements(),
