@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 import sys
-from warden.config import load_config, edit_config
+from warden.config import load_config, edit_config, save_config
 from warden.watcher import Warden 
 from warden.logger import logger
 from warden.process_manager import ProcessManager
@@ -44,6 +44,13 @@ def watch_pdb(args):
     watcher = PDBWatcher(pid, throttle, check_interval, num_of_checks, long_pause_duration)
     watcher.watch(send_alert)
 
+
+
+def set_api_url(args):
+    config = load_config()
+    config['api']['endpoint'] = args.url
+    save_config(config)
+    print(f"API endpoint URL set to: {args.url}")
 
 def edit_configuration(args):
     """Edits a configuration value."""
@@ -113,6 +120,10 @@ def parse_args():
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to the configuration file.")
     parser.add_argument("--run-in-background", action="store_true", help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(title="commands")
+
+    set_url_parser = subparsers.add_parser("set-url", help="Set the API endpoint URL.")
+    set_url_parser.add_argument("url", type=str, help="The API endpoint URL to set.")
+    set_url_parser.set_defaults(func=set_api_url)
     
     # Watch logs command
     watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
