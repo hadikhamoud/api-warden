@@ -34,13 +34,14 @@ def watch_pdb(args):
     throttle = args.throttle
     check_interval = args.check_interval
     num_of_checks = args.num_of_checks
+    long_pause_duration = args.long_pause_duration
     log_file_path = config["logfile"]
 
     def send_alert(pid):
         print("here watching bruv")
         # send_alert_to_api(pid)
 
-    watcher = PDBWatcher(pid, log_file_path, throttle, check_interval, num_of_checks)
+    watcher = PDBWatcher(pid, log_file_path, throttle, check_interval, num_of_checks, long_pause_duration)
     watcher.watch(send_alert)
 
 
@@ -123,6 +124,7 @@ def parse_args():
     watch_pdb_parser.add_argument("--throttle", type=int, default=2, help="Throttle time in seconds.")
     watch_pdb_parser.add_argument("--check-interval", type=int, default=3, help="Check interval time in seconds.")
     watch_pdb_parser.add_argument("--num_of_checks", type=int, default=3, help="Check interval time in seconds.") 
+    watch_pdb_parser.add_argument("--long_pause_duration", type=int, default=180, help="Check interval time in seconds.") 
     watch_pdb_parser.set_defaults(func=watch_pdb)
 
     # Kill command
