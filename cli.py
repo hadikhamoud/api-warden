@@ -1,14 +1,11 @@
 import argparse
 import subprocess
 import sys
-import time
-
 from warden.config import load_config, edit_config
 from warden.watcher import Warden 
-from warden.api import send_alert_to_api
 from warden.logger import logger
 from warden.process_manager import ProcessManager
-
+from warden.pdb_watcher import PDBWatcher
 
 process_manager = ProcessManager()
 
@@ -28,7 +25,23 @@ def watch_logs(args):
     watcher = Warden(log_file_path, patterns, detected_change)
     watcher.start()
     logger.debug(f"Watching logs for file: {log_file_path}")
+    
 
+def watch_pdb(args):
+    logger.debug('Entered watch_pdb function.')
+    config = load_config(args.config)
+    pid = args.pid
+    throttle = args.throttle
+    check_interval = args.check_interval
+    num_of_checks = args.num_of_checks
+    log_file_path = config["logfile"]
+
+    def send_alert(pid):
+        print("here watching bruv")
+        # send_alert_to_api(pid)
+
+    watcher = PDBWatcher(pid, log_file_path, throttle, check_interval, num_of_checks)
+    watcher.watch(send_alert)
 
 
 def edit_configuration(args):
@@ -103,6 +116,14 @@ def parse_args():
     # Watch logs command
     watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
     watch_parser.set_defaults(func=watch_logs)
+
+    # Watch pdb command
+    watch_pdb_parser = subparsers.add_parser("watch-pdb", help="Start watching logs based on the configuration and enter pdb on pattern match.")
+    watch_pdb_parser.add_argument("pid", type=int,  help="Process ID to watch.")
+    watch_pdb_parser.add_argument("--throttle", type=int, default=2, help="Throttle time in seconds.")
+    watch_pdb_parser.add_argument("--check-interval", type=int, default=3, help="Check interval time in seconds.")
+    watch_pdb_parser.add_argument("--num_of_checks", type=int, default=3, help="Check interval time in seconds.") 
+    watch_pdb_parser.set_defaults(func=watch_pdb)
 
     # Kill command
     list_processes_parser = subparsers.add_parser("list", help="List all tracked PIDs.")

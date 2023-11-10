@@ -29,13 +29,11 @@ class WardenHandler(FileSystemEventHandler):
     def on_modified(self, event):
 
         if os.path.isfile(self.path) and event.src_path == self.path:
-            # If you're specifically watching a file (not a directory)
             new_lines = self.read_new_lines(self.path)
             for line in new_lines:
                 self.check_patterns_in_line(line)
     
         elif os.path.isdir(self.path) and os.path.isfile(event.src_path):
-            # If you're watching a directory, handle each modified file individually
             new_lines = self.read_new_lines(event.src_path)
             for line in new_lines:
                 self.check_patterns_in_line(line)
@@ -81,12 +79,10 @@ class Warden:
 
 
 def detected_change(pattern, line):
-    # This function will be called when one of the patterns is detected in the log file.
     logger.debug(f"Detected pattern '{pattern}' in line: {line}")
-    # Insert API request logic here or other action based on the detected pattern
 
 if __name__ == "__main__":
-    log_file_path = "/path/to/your/logfile.log"
+    log_file_path = ""
     patterns_to_watch = ['ERROR', 'CRITICAL', 'WARNING']
     watcher = Warden(log_file_path, patterns_to_watch, detected_change)
     watcher.start()
