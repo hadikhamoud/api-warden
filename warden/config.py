@@ -1,9 +1,18 @@
 import yaml
 import os
-from appdirs import user_config_dir
 
-config_dir = user_config_dir("api-warden")
-config_path = os.path.join(config_dir, "config.yaml")
+
+DEFAULT_CONFIG = {
+    "logfile": "default.log",
+    "patterns": [],
+    "api": {
+        "endpoint": ""
+    }
+}
+
+home_dir = os.path.expanduser('~')
+config_dir = os.path.join(home_dir, '.api-warden')
+config_path = os.path.join(config_dir, 'config.yaml')
 
 class InvalidConfigurationError(Exception):
     pass
@@ -15,7 +24,7 @@ def ensure_config_directory():
 def load_config():
     ensure_config_directory()
     if not os.path.isfile(config_path):
-        return {}  # Return an empty config if the file doesn't exist
+        return DEFAULT_CONFIG
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     validate_config(config)

@@ -1,4 +1,4 @@
-logfile: /Users/hadihamoud/Desktop/logs/
+logfile: 
 patterns:
   - ERROR
   - CRITICAL

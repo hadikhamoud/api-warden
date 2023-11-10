@@ -13,7 +13,7 @@ process_manager = ProcessManager()
 def watch_logs(args):
     """Starts watching logs based on the configuration."""
     logger.debug('Entered watch_logs function.')
-    config = load_config(args.config)
+    config = load_config()
     log_file_path = config["logfile"]
     patterns = config["patterns"]
     logger.debug(f"Loaded configuration: {config}")
@@ -30,33 +30,34 @@ def watch_logs(args):
 
 def watch_pdb(args):
     logger.debug('Entered watch_pdb function.')
-    config = load_config(args.config)
+    config = load_config()
     pid = args.pid
     throttle = args.throttle
     check_interval = args.check_interval
     num_of_checks = args.num_of_checks
     long_pause_duration = args.long_pause_duration
     endpoint_url = config["api"]["endpoint"]
-    # log_file_path = config["logfile"]
+    
 
-    def send_alert(endpoint_url):
-        print("here watching bruv")
-        send_alert_to_api(endpoint_url)
+    def send_alert(endpoint_url, *args, **kwargs):
+        print("sending alert to api")
+        send_alert_to_api(endpoint_url, *args, **kwargs)
 
     watcher = PDBWatcher(pid, throttle, check_interval, num_of_checks, long_pause_duration)
-    watcher.watch(send_alert)
+    watcher.watch(send_alert, endpoint_url)
 
 
 
 def set_api_url(args):
     config = load_config()
+    print(config)
     config['api']['endpoint'] = args.url
     save_config(config)
     print(f"API endpoint URL set to: {args.url}")
 
 def edit_configuration(args):
     """Edits a configuration value."""
-    config = load_config(args.config)
+    config = load_config()
     edit_config(config, args.key, args.value, args.config)
     
     print(f"Configuration '{args.key}' updated to '{args.value}'.")

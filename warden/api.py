@@ -1,11 +1,12 @@
 import requests
+from warden.stats import get_call_details
 from warden.logger import logger
 
 # Error class to handle API specific issues
 class APIError(Exception):
     pass
 
-def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = None, api_key=None):
+def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = None, api_key=None, *args, **kwargs):
     """
     Sends an alert to the given API endpoint about a detected pattern.
 
@@ -25,15 +26,18 @@ def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = Non
         headers['Authorization'] = f'Bearer {api_key}'
     
     payload = {
-        'pattern': pattern_detected,
-        'message': message_content
+        "pattern_detected": pattern_detected,
+        "message_content": message_content,
+        "call_details": get_call_details(kwargs['pid'])
     }
+
+
 
     try:
         response = requests.post(endpoint_url, headers=headers, json=payload)
         response.raise_for_status()  # Raises a HTTPError if the HTTP request returned an unsuccessful status code
+        return response
 
     except requests.RequestException as e:
         raise APIError(f"Error occurred while sending alert to API: {str(e)}")
 
-    return response.json()

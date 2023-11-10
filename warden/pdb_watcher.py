@@ -1,6 +1,8 @@
 import subprocess
 import time
 import platform
+from warden.stats import get_call_details
+
 
 class PDBWatcher:
     def __init__(self, pid, throttle, check_interval, num_of_checks, long_pause_duration):
@@ -9,7 +11,7 @@ class PDBWatcher:
         self.check_interval = check_interval
         self.num_of_checks = num_of_checks
         self.long_pause_duration = long_pause_duration
-
+        
 
 
 
@@ -34,7 +36,7 @@ class PDBWatcher:
             return self.get_process_state_unix()
 
 
-    def watch(self, alert_func):
+    def watch(self, alert_func, *args, **kwargs):
         consecutive_S_plus = 0
         is_long_pause_active = False  # Flag to track if the long pause is active
 
@@ -45,15 +47,15 @@ class PDBWatcher:
 
             state = self.get_process_state()
 
-            if state is None:
-                
+            if state is None: 
                 break
+
             elif 'S+' in state:
             
                 consecutive_S_plus += 1
 
                 if consecutive_S_plus >= self.num_of_checks:
-                    alert_func(self.pid)
+                    alert_func(*args, pid = self.pid)
                     consecutive_S_plus = 0
                     is_long_pause_active = True  # Activate the long pause
 
