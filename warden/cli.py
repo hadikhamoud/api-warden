@@ -134,14 +134,14 @@ def parse_args():
     # Watch logs command
     watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
     watch_parser.set_defaults(func=watch_logs)
-
+ 
     # Watch pdb command
     watch_pdb_parser = subparsers.add_parser("watch-pdb", help="Start watching logs based on the configuration and enter pdb on pattern match.")
     watch_pdb_parser.add_argument("pid", type=int,  help="Process ID to watch.")
-    watch_pdb_parser.add_argument("--throttle", type=int, default=2, help="Throttle time in seconds.")
-    watch_pdb_parser.add_argument("--check-interval", type=int, default=3, help="Check interval time in seconds.")
-    watch_pdb_parser.add_argument("--num_of_checks", type=int, default=3, help="Check interval time in seconds.") 
-    watch_pdb_parser.add_argument("--long_pause_duration", type=int, default=180, help="Check interval time in seconds.") 
+    watch_pdb_parser.add_argument("--throttle", type=int, default=180, help="Throttle time in seconds.")
+    watch_pdb_parser.add_argument("--check-interval", type=int, default=5, help="Check interval time in seconds.")
+    watch_pdb_parser.add_argument("--num_of_checks", type=int, default=4, help="Check interval time in seconds.") 
+    watch_pdb_parser.add_argument("--long_pause_duration", type=int, default=300, help="Check interval time in seconds.") 
     watch_pdb_parser.set_defaults(func=watch_pdb)
 
     # Kill command
