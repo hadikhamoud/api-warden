@@ -8,6 +8,7 @@ from warden.process_manager import ProcessManager
 from warden.pdb_watcher import PDBWatcher
 from warden.api import send_alert_to_api
 from warden.stats import get_call_details
+from warden.bpm_monitor import BPMWatcher
 
 process_manager = ProcessManager()
 
@@ -27,7 +28,26 @@ def watch_logs(args):
     watcher = Warden(log_file_path, patterns, detected_change)
     watcher.start()
     logger.debug(f"Watching logs for file: {log_file_path}")
+
+
+def watch_bpm(args):
+    """Starts monitoring a directory and sends API call if no changes are detected."""
+    logger.debug('Entered watch_bpm function.')
+    config = load_config()
+    directory_or_file_path = args.directory_or_file
+    print(f"directory_or_file_path: {directory_or_file_path}")
     
+    check_interval = args.check_interval
+    endpoint_url = config["api"]["endpoint"]
+
+    def send_alert(endpoint_url, *args, **kwargs):
+        print("Sending alert to API due to inactivity")
+        payload = {"source": get_call_details(),
+                   "type": "heartbeat"}
+        send_alert_to_api(endpoint_url, *args, **kwargs, payload=payload)
+
+    watcher = BPMWatcher(directory_or_file_path, check_interval)
+    watcher.start(send_alert, endpoint_url)
 
 def watch_pdb(args):
     logger.debug('Entered watch_pdb function.')
@@ -134,6 +154,13 @@ def parse_args():
     # Watch logs command
     watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
     watch_parser.set_defaults(func=watch_logs)
+
+    # Watch bpm command
+    watch_bpm_parser = subparsers.add_parser("bpm", help="Monitor a directory and send alert if no changes are detected.")
+    watch_bpm_parser.add_argument("-d", "--directory_or_file",type=str, help="Directory path to monitor.")
+    watch_bpm_parser.add_argument("--check-interval", type=int, default=60, help="Interval in seconds to check for changes.")
+    watch_bpm_parser.set_defaults(func=watch_bpm)
+
  
     # Watch pdb command
     watch_pdb_parser = subparsers.add_parser("watch-pdb", help="Start watching logs based on the configuration and enter pdb on pattern match.")

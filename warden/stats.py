@@ -26,7 +26,7 @@ def get_cmdline(pid):
         return str(e)
 
 
-def get_call_details(pid):
+def get_call_details(pid = None, ):
     hostname, ip = get_local_ip()
     user = get_user()
     cmdline = get_cmdline(pid)
