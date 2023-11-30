@@ -38,7 +38,10 @@ def watch_bpm(args):
     print(f"directory_or_file_path: {directory_or_file_path}")
     
     check_interval = args.check_interval
+    num_of_checks = args.tries
     endpoint_url = config["api"]["endpoint"]
+
+    
 
     def send_alert(endpoint_url, *args, **kwargs):
         print("Sending alert to API due to inactivity")
@@ -46,7 +49,7 @@ def watch_bpm(args):
                    "type": "heartbeat"}
         send_alert_to_api(endpoint_url, *args, **kwargs, payload=payload)
 
-    watcher = BPMWatcher(directory_or_file_path, check_interval)
+    watcher = BPMWatcher(directory_or_file_path, check_interval, num_of_checks)
     watcher.start(send_alert, endpoint_url)
 
 def watch_pdb(args):
@@ -158,7 +161,8 @@ def parse_args():
     # Watch bpm command
     watch_bpm_parser = subparsers.add_parser("bpm", help="Monitor a directory and send alert if no changes are detected.")
     watch_bpm_parser.add_argument("-d", "--directory_or_file",type=str, help="Directory path to monitor.")
-    watch_bpm_parser.add_argument("--check-interval", type=int, default=60, help="Interval in seconds to check for changes.")
+    watch_bpm_parser.add_argument("-i", "--check-interval", type=int, default=60, help="Interval in seconds to check for changes.")
+    watch_bpm_parser.add_argument("-t", "--tries", type=int, default=3, help="consecutives callbacks to send alert.")
     watch_bpm_parser.set_defaults(func=watch_bpm)
 
  
