@@ -1,15 +1,20 @@
 import threading
 import time
+import random
 
 class Beat:
-    def __init__(self, interval, log_file, max_lines = 5):
+    def __init__(self, interval = 10, log_file=None, max_lines=5):
         self.interval = interval
-        self.log_file = log_file
+        self.log_file = log_file if log_file is not None else f"heartbeat_{random.randint(10000, 99999)}.log"
         self.max_lines = max_lines
         self.current_lines = 0
         self.thread = threading.Thread(target=self.run)
         self.thread.daemon = True
         self.running = False
+
+        print(f"Log file: {self.log_file}")
+        print(f"Max lines: {self.max_lines}")
+        print(f"Interval: {self.interval}")
 
     def start(self):
         self.running = True
@@ -32,5 +37,3 @@ class Beat:
         with open(self.log_file, 'a') as f:
             f.write(f"Heartbeat sent at {time.asctime()}\n")
             self.current_lines += 1
-
-
