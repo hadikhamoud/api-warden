@@ -2,7 +2,6 @@ import argparse
 import subprocess
 import sys
 from warden.config import load_config, edit_config, save_config
-from warden.watcher import Warden 
 from warden.logger import logger
 from warden.process_manager import ProcessManager
 from warden.pdb_watcher import PDBWatcher
@@ -12,22 +11,6 @@ from warden.bpm_monitor import BPMWatcher
 
 process_manager = ProcessManager()
 
-def watch_logs(args):
-    """Starts watching logs based on the configuration."""
-    logger.debug('Entered watch_logs function.')
-    config = load_config()
-    log_file_path = config["logfile"]
-    patterns = config["patterns"]
-    logger.debug(f"Loaded configuration: {config}")
-    logger.debug(f"patterns: {patterns}")
-
-    def detected_change(pattern, line):
-        print(f"Detected pattern '{pattern}' in line: {line}")
-        # send_alert_to_api(config["api"]["endpoint"], pattern, line, api_key=config["api"]["key"])
-
-    watcher = Warden(log_file_path, patterns, detected_change)
-    watcher.start()
-    logger.debug(f"Watching logs for file: {log_file_path}")
 
 
 def watch_bpm(args):
@@ -118,15 +101,10 @@ def kill_all_processes(args):
 def main():
     # Parse the arguments at the start so we can use them in multiple places
     args, parser = parse_args()
-    
-    # If the special argument is present, it implies the 'watch' command is being executed.
-    if '--run-in-background' in sys.argv:
-        logger.debug('Running with --run-in-background flag.')
-        watch_logs(args)  # Pass the parsed args to watch_logs
 
     # If the argument is not present and the command is 'watch', 
     # re-run the script with the argument in the background.
-    elif 'watch' in sys.argv:
+    if 'watch' in sys.argv:
         process = subprocess.Popen(
             [sys.executable, sys.argv[0], '--run-in-background'] + sys.argv[1:],
             #stdout=subprocess.DEVVULL,
@@ -154,9 +132,6 @@ def parse_args():
     set_url_parser.add_argument("url", type=str, help="The API endpoint URL to set.")
     set_url_parser.set_defaults(func=set_api_url)
     
-    # Watch logs command
-    watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
-    watch_parser.set_defaults(func=watch_logs)
 
     # Watch bpm command
     watch_bpm_parser = subparsers.add_parser("bpm", help="Monitor a directory and send alert if no changes are detected.")

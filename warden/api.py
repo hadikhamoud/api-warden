@@ -1,12 +1,12 @@
-import requests
-from warden.stats import get_call_details
+import json
+from urllib import request, error
 from warden.logger import logger
 
 # Error class to handle API specific issues
 class APIError(Exception):
     pass
 
-def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = None, api_key=None, *args, **kwargs):
+def send_alert_to_api(endpoint_url, pattern_detected=None, message_content=None, api_key=None, *args, **kwargs):
     """
     Sends an alert to the given API endpoint about a detected pattern.
 
@@ -26,16 +26,15 @@ def send_alert_to_api(endpoint_url, pattern_detected=None, message_content = Non
         headers['Authorization'] = f'Bearer {api_key}'
     
     payload = kwargs['payload']
-    
+    data = json.dumps(payload).encode('utf-8')  # Convert payload to JSON and then to bytes
 
-
-
+    req = request.Request(endpoint_url, data=data, headers=headers, method='POST')
     try:
-        response = requests.post(endpoint_url, headers=headers, json=payload)
-        response.raise_for_status() 
-        print(response) # Raises a HTTPError if the HTTP request returned an unsuccessful status code
-        return response
-
-    except requests.RequestException as e:
-        raise APIError(f"Error occurred while sending alert to API: {str(e)}")
-
+        with request.urlopen(req) as response:
+            response_body = response.read().decode('utf-8')
+            print(response_body)
+            return response_body
+    except error.HTTPError as e:
+        raise APIError(f"HTTP Error occurred while sending alert to API: {e.reason}")
+    except error.URLError as e:
+        raise APIError(f"URL Error occurred while sending alert to API: {e.reason}")

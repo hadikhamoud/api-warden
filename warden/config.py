@@ -1,6 +1,5 @@
-import yaml
+import json
 import os
-
 
 DEFAULT_CONFIG = {
     "logfile": "default.log",
@@ -12,7 +11,7 @@ DEFAULT_CONFIG = {
 
 home_dir = os.path.expanduser('~')
 config_dir = os.path.join(home_dir, '.api-warden')
-config_path = os.path.join(config_dir, 'config.yaml')
+config_path = os.path.join(config_dir, 'config.json')  
 
 class InvalidConfigurationError(Exception):
     pass
@@ -26,9 +25,10 @@ def load_config():
     if not os.path.isfile(config_path):
         return DEFAULT_CONFIG
     with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
+        config = json.load(file) 
     validate_config(config)
     return config
+
 def validate_config(config):
     """
     Validate the loaded configuration.
@@ -39,8 +39,6 @@ def validate_config(config):
         if key not in config:
             raise InvalidConfigurationError(f"Missing key in config: {key}")
 
-    # You can add more specific validation for each configuration item if needed
-
 def edit_config(config, key, value):
     config[key] = value
     save_config(config)
@@ -48,4 +46,4 @@ def edit_config(config, key, value):
 def save_config(config):
     ensure_config_directory()
     with open(config_path, 'w') as file:
-        yaml.dump(config, file, default_flow_style=False)
+        json.dump(config, file, indent=4)  

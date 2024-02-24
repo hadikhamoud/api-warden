@@ -1,7 +1,1 @@
-PyYAML==6.0.1
-requests==2.31.0
-tailer==0.4.1
-tomli==2.0.1
-urllib3==2.0.5
-watchdog==3.0.0
 psutil
