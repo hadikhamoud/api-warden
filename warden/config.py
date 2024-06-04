@@ -1,16 +1,31 @@
-import yaml
+import json
+import os
 
-DEFAULT_CONFIG_PATH = "config.yaml"
+DEFAULT_CONFIG = {
+    "logfile": "default.log",
+    "patterns": [],
+    "api": {
+        "endpoint": ""
+    }
+}
+
+home_dir = os.path.expanduser('~')
+config_dir = os.path.join(home_dir, '.api-warden')
+config_path = os.path.join(config_dir, 'config.json')  
 
 class InvalidConfigurationError(Exception):
     pass
 
-def load_config(config_path=DEFAULT_CONFIG_PATH):
-    """
-    Load the configuration from a YAML file.
-    """
+def ensure_config_directory():
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+
+def load_config():
+    ensure_config_directory()
+    if not os.path.isfile(config_path):
+        return DEFAULT_CONFIG
     with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
+        config = json.load(file) 
     validate_config(config)
     return config
 
@@ -24,18 +39,11 @@ def validate_config(config):
         if key not in config:
             raise InvalidConfigurationError(f"Missing key in config: {key}")
 
-    # You can add more specific validation for each configuration item if needed
-
-def edit_config(config, key, value, config_path=DEFAULT_CONFIG_PATH):
-    """
-    Edit a specific configuration item and save it back to the file.
-    """
+def edit_config(config, key, value):
     config[key] = value
-    save_config(config, config_path)
+    save_config(config)
 
-def save_config(config, config_path=DEFAULT_CONFIG_PATH):
-    """
-    Save the configuration back to the YAML file.
-    """
+def save_config(config):
+    ensure_config_directory()
     with open(config_path, 'w') as file:
-        yaml.dump(config, file, default_flow_style=False)
+        json.dump(config, file, indent=4)  

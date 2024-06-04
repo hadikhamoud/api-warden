@@ -194,3 +194,9 @@ Thumbs.db
 
 # Pytest cache
 .pytest_cache/
+
+
+
+##APP SPECIFIC
+
+processes.json

@@ -1,9 +1,0 @@
-logfile: /path/to/process.log
-patterns:
-  - ERROR
-  - CRITICAL
-api:
-  url: https://api.example.com/alert
-  method: POST
-  headers:
-    Authorization: Bearer TOKEN

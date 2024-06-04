@@ -1,48 +1,140 @@
 import argparse
-from warden.config import load_config, edit_config
-from warden.watcher import Warden 
+import ast
+import subprocess
+import sys
+from warden.config import load_config, edit_config, save_config
+from warden.logger import logger
+from warden.process_manager import ProcessManager
 from warden.api import send_alert_to_api
+from warden.stats import get_call_details
+from warden.bpm_monitor import BPMWatcher
+from warden.process_watcher import ProcessWatcher
+import warden.utils as utils
 
-def watch_logs(args):
-    """Starts watching logs based on the configuration."""
-    config = load_config(args.config)
-    log_file_path = config["logfile"]
-    patterns = config["patterns"]
+process_manager = ProcessManager()
 
-    def detected_change(pattern, line):
-        print(f"Detected pattern '{pattern}' in line: {line}")
-        send_alert_to_api(config["api"]["endpoint"], pattern, line, api_key=config["api"]["key"])
 
-    watcher = Warden(log_file_path, patterns, detected_change)
-    watcher.start()
+
+def watch_bpm(args):
+    """Starts monitoring a directory and sends API call if no changes are detected."""
+    logger.debug('Entered watch_bpm function.')
+    config = load_config()
+    directory_or_file_path = args.directory_or_file
+    print(f"directory_or_file_path: {directory_or_file_path}")
+    
+    check_interval = args.check_interval
+    num_of_checks = args.tries
+    endpoint_url = config["api"]["endpoint"]
+ 
+
+    def send_alert(endpoint_url, *args, **kwargs):
+        print("Sending alert to API due to inactivity")
+        payload = {"source": get_call_details(),
+                   "type": "heartbeat"}
+        send_alert_to_api(endpoint_url, *args, **kwargs, payload=payload)
+
+    watcher = BPMWatcher(directory_or_file_path, check_interval, num_of_checks)
+    watcher.start(send_alert, endpoint_url)
+
+
+def watch_process(args):
+    """Starts monitoring a directory and sends API call if no changes are detected."""
+    logger.debug('Entered watch_bpm function.')
+    config = load_config()
+    process_id = args.process_id
+    print(f"directory_or_file_path: {process_id}")
+    
+    check_interval = args.check_interval
+    num_of_checks = args.tries
+    endpoint_url = config["api"]["endpoint"]
+ 
+
+    def send_alert(endpoint_url, *args, **kwargs):
+        print("Sending alert to API due to inactivity")
+        payload = {"source": get_call_details(),
+                   "type": "heartbeat"}
+        send_alert_to_api(endpoint_url, *args, **kwargs, payload=payload)
+
+    watcher = ProcessWatcher(process_id)
+    watcher.start(send_alert, endpoint_url)
+
+
+
+def set_api_url(args):
+    config = load_config()
+    print(config)
+    config['api']['endpoint'] = args.url
+    save_config(config)
+    print(f"API endpoint URL set to: {args.url}")
+
+def set_api_headers(args):
+    config = load_config()
+    config['api']['headers'] = args.headers
+    save_config(config)
+    print(config)
+    print(f"API endpoint Headers set to: {args.headers}")
 
 def edit_configuration(args):
     """Edits a configuration value."""
-    config = load_config(args.config)
+    config = load_config()
     edit_config(config, args.key, args.value, args.config)
+    
     print(f"Configuration '{args.key}' updated to '{args.value}'.")
 
-def main():
-    parser = argparse.ArgumentParser(description="Warden - Watch logs and alert on specific patterns.")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to the configuration file.")
 
+
+def main():
+    # Parse the arguments at the start so we can use them in multiple places
+    args, parser = parse_args()
+
+  
+    if 'watch' in sys.argv:
+        process = subprocess.Popen(
+            [sys.executable, sys.argv[0], '--run-in-background'] + sys.argv[1:],
+            #stdout=subprocess.DEVVULL,
+            #stderr=subprocess.DEVNULL
+        )
+        process_manager.add_process(process.pid, ' '.join(process.args))
+        logger.debug(f"Started watch process with PID: {process.pid}")
+
+    # Otherwise, just execute the relevant function.
+    else:
+        if "func" in args:
+            args.func(args)
+        else:
+            parser.print_help()
+
+
+def parse_args():
+    logger.debug('Entered watch_or_edit_config function.')
+    parser = argparse.ArgumentParser(description="Warden - Watch logs and alert on specific patterns.")
+    parser.add_argument("--config", type=str, default="config.json", help="Path to the configuration file.")
     subparsers = parser.add_subparsers(title="commands")
 
-    # Watch logs command
-    watch_parser = subparsers.add_parser("watch", help="Start watching logs based on the configuration.")
-    watch_parser.set_defaults(func=watch_logs)
+    set_url_parser = subparsers.add_parser("set-url", help="Set the API endpoint URL.")
+    set_url_parser.add_argument("url", type=str, help="The API endpoint URL to set.")
+    set_url_parser.set_defaults(func=set_api_url)
 
-    # Edit configuration command
-    edit_parser = subparsers.add_parser("edit-config", help="Edit a specific configuration value.")
-    edit_parser.add_argument("key", type=str, help="Configuration key to edit.")
-    edit_parser.add_argument("value", type=str, help="New value for the configuration key.")
-    edit_parser.set_defaults(func=edit_configuration)
+    set_header_parser = subparsers.add_parser("set-headers", help="Set the API endpoint headers.")
+    set_header_parser.add_argument("headers", type=utils.parse_dict, help="The API endpoint URL to set.")
+    set_header_parser.set_defaults(func=set_api_headers)
+    
 
-    args = parser.parse_args()
-    if "func" in args:
-        args.func(args)
-    else:
-        parser.print_help()
+    # Watch bpm command
+    watch_bpm_parser = subparsers.add_parser("bpm", help="Monitor a directory and send alert if no changes are detected.")
+    watch_bpm_parser.add_argument("-d", "--directory-or-file",type=str, help="Directory path to monitor.")
+    watch_bpm_parser.add_argument("-i", "--check-interval", type=int, default=60, help="Interval in seconds to check for changes.")
+    watch_bpm_parser.add_argument("-t", "--tries", type=int, default=3, help="consecutives callbacks to send alert.")
+    watch_bpm_parser.set_defaults(func=watch_bpm)
+    
+
+    watch_process_parser = subparsers.add_parser("proc", help="Monitor a directory and send alert if no changes are detected.")
+    watch_process_parser.add_argument("-pid", "--process-id",type=str, help="Directory path to monitor.")
+    watch_process_parser.set_defaults(func=watch_process)
+    
+    return parser.parse_args(), parser
+
+    
 
 if __name__ == "__main__":
     main()

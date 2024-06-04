@@ -1,0 +1,14 @@
+{
+  "logfile": "",
+  "patterns": [
+    "ERROR",
+    "CRITICAL"
+  ],
+  "api": {
+    "endpoint": "https://api.example.com/alert",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer TOKEN"
+    }
+  }
+}

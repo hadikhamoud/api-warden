@@ -8,11 +8,11 @@ if not os.path.exists('logs'):
 
 LOG_FILENAME = 'logs/app.log'
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-LOG_LEVEL = logging.INFO
-MAX_LOG_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
-BACKUP_COUNT = 3  # Keep three backup copies
+LOG_LEVEL = logging.DEBUG
+MAX_LOG_FILE_SIZE = 5 * 1024 * 1024  
+BACKUP_COUNT = 3 
 
-# Configure the root logger
+
 logger = logging.getLogger()
 logger.setLevel(LOG_LEVEL)
 
