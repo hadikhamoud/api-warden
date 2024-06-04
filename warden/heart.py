@@ -1,4 +1,5 @@
 import threading
+import os
 import time
 import random
 
@@ -11,8 +12,9 @@ class Beat:
         self.thread = threading.Thread(target=self.run)
         self.thread.daemon = True
         self.running = False
-
+        
         print(f"Log file: {self.log_file}")
+        print(f"Full path: {os.path.abspath(self.log_file)}")
         print(f"Max lines: {self.max_lines}")
         print(f"Interval: {self.interval}")
 

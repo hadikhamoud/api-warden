@@ -1,7 +1,8 @@
 import os
 import re
 import socket
-
+import argparse
+import ast
 
 def file_exists(filepath):
     """Check if a file exists."""
@@ -25,9 +26,6 @@ def validate_ip(ip_str):
     return bool(pattern.match(ip_str))
 
 
-
-
-
 def get_machine_name():
     """Return the machine's name."""
     return socket.gethostname()
@@ -44,3 +42,11 @@ def get_local_ip():
         return local_ip
     except Exception as e:
         raise RuntimeError("Failed to determine local IP address") from e
+
+
+def parse_dict(arg):
+    try:
+        return ast.literal_eval(arg)
+    except Exception as e:
+        raise argparse.ArgumentTypeError(f"Invalid dict: {arg} - {e}")
+

@@ -1,8 +1,9 @@
-import json
-from urllib import request, error
 from warden.logger import logger
+from warden.config import load_config
+import requests
 
-# Error class to handle API specific issues
+config = load_config()
+
 class APIError(Exception):
     pass
 
@@ -16,25 +17,32 @@ def send_alert_to_api(endpoint_url, pattern_detected=None, message_content=None,
     :param api_key: Optional API key for authentication.
     :return: Response from the API.
     """
-    headers = {
+    headers_default = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
+
+    
+
+    headers = config.get('api', {}).get('headers')
+
+    headers.update(headers_default)
+    print(headers)
+
     logger.info("Sending alert to API.")
     
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'
     
     payload = kwargs['payload']
-    data = json.dumps(payload).encode('utf-8')  # Convert payload to JSON and then to bytes
 
-    req = request.Request(endpoint_url, data=data, headers=headers, method='POST')
+
     try:
-        with request.urlopen(req) as response:
-            response_body = response.read().decode('utf-8')
-            print(response_body)
-            return response_body
-    except error.HTTPError as e:
-        raise APIError(f"HTTP Error occurred while sending alert to API: {e.reason}")
-    except error.URLError as e:
-        raise APIError(f"URL Error occurred while sending alert to API: {e.reason}")
+        response = requests.post(endpoint_url, headers=headers, json=payload)
+        response.raise_for_status() 
+        logger.info("Alert sent to API successfully.")
+        return response.text
+    except requests.exceptions.HTTPError as e:
+        raise APIError(f"HTTP Error occurred while sending alert to API: {e.response.reason}")
+    except requests.exceptions.RequestException as e:
+        raise APIError(f"Request Error occurred while sending alert to API: {str(e)}")
