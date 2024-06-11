@@ -7,7 +7,7 @@ config = load_config()
 class APIError(Exception):
     pass
 
-def send_alert_to_api(endpoint_url, pattern_detected=None, message_content=None, api_key=None, *args, **kwargs):
+def send_alert_to_api(endpoint_url, api_key=None, *args, **kwargs):
     """
     Sends an alert to the given API endpoint about a detected pattern.
 
