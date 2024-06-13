@@ -64,3 +64,4 @@ class TestMonitorApiDecorator(unittest.TestCase):
         }
 
         mock_send_alert_to_api.assert_called_with(os.environ.get("TEST_API_ROUTE"), payload=expected_payload)
+
