@@ -22,9 +22,10 @@ def send_alert_to_api(endpoint_url, api_key=None, *args, **kwargs):
         'Accept': 'application/json'
     }
 
-    
-
-    headers = config.get('api', {}).get('headers')
+    if 'headers' in kwargs:
+        headers = kwargs['headers']
+    else:
+        headers = config.get('api', {}).get('headers', {})
 
     headers.update(headers_default)
     print(headers)
@@ -34,15 +35,17 @@ def send_alert_to_api(endpoint_url, api_key=None, *args, **kwargs):
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'
     
-    payload = kwargs['payload']
-
+    if 'body' in kwargs:
+        payload = kwargs['body']
+    else:
+        payload = kwargs.get('payload', {})
 
     try:
-        response = requests.post(endpoint_url, headers=headers, json=payload)
-        response.raise_for_status() 
+        response = requests.post(endpoint_url, json=payload, headers=headers)
+        response.raise_for_status()
         logger.info("Alert sent to API successfully.")
         return response.text
     except requests.exceptions.HTTPError as e:
-        raise APIError(f"HTTP Error occurred while sending alert to API: {e.response.reason}")
+        raise APIError(f"HTTP Error occurred while sending alert to API: {str(e)}")
     except requests.exceptions.RequestException as e:
-        raise APIError(f"Request Error occurred while sending alert to API: {str(e)}")
+        raise APIError(f"Error occurred while sending alert to API: {str(e)}")

@@ -1,8 +1,8 @@
+from setuptools import setup, find_packages
 def read_requirements():
     with open('requirements.txt', 'r') as file:
         return file.readlines()
 
-from setuptools import setup, find_packages
 
 setup(
     name='api-warden',
