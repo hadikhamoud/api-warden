@@ -1,4 +1,5 @@
 from functools import wraps
+import traceback
 from warden.stats import get_call_details
 from warden.api import send_alert_to_api
 from warden.config import load_config
@@ -29,7 +30,8 @@ def monitor_api(url=None, headers=None, body=None):
                     "source": get_call_details(),
                     "type": "decorator",
                     "status": "error",
-                    "error": str(e)
+                    "error": str(e),
+                    "stack_trace": traceback.format_exc()
                 }
                 if body:
                     payload.update(body)
