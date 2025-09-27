@@ -1,4 +1,27 @@
 const std = @import("std");
+const HealthzResponse = struct { status: []const u8 };
+
+fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
+    var client = std.http.Client{ .allocator = alloc };
+    defer client.deinit();
+
+    var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
+    defer buffer.deinit();
+    const headers = &[_]std.http.Header{};
+    const response = try client.fetch(.{ .method = .GET, .location = .{ .url = uri }, .extra_headers = headers, .response_writer = &buffer.writer });
+    if (response.status != .ok) {
+        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
+    }
+
+    var list = buffer.toArrayList();
+    defer list.deinit(alloc);
+    const items: []u8 = list.items;
+
+    const parsed = try std.json.parseFromSlice(*HealthzResponse, alloc, items, .{});
+    defer parsed.deinit();
+    const status_copy = try alloc.dupe(u8, parsed.value.status);
+    return HealthzResponse{ .status = status_copy };
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,5 +37,7 @@ pub fn main() !void {
     }
 
     const name = args[1];
-    std.debug.print("Hello {s}!\n", .{name});
+    const output = try get(name, allocator);
+    std.debug.print("{s}", .{output.status});
+    defer allocator.free(output.status);
 }
