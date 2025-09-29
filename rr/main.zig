@@ -23,6 +23,12 @@ fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
     return HealthzResponse{ .status = status_copy };
 }
 
+fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
+    var child = std.process.Child.init(arguments, alloc);
+    try child.spawn();
+    return child.id;
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(gpa.deinit() == .ok);
@@ -36,8 +42,7 @@ pub fn main() !void {
         return;
     }
 
-    const name = args[1];
-    const output = try get(name, allocator);
-    std.debug.print("{s}", .{output.status});
-    defer allocator.free(output.status);
+    const arguments = args[1..args.len];
+    const pid = try startProcess(arguments, allocator);
+    std.debug.print("process ID: {d}", .{pid});
 }
