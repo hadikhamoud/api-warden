@@ -1,6 +1,27 @@
 const std = @import("std");
 const HealthzResponse = struct { status: []const u8 };
 
+fn getHome() ![]const u8 {
+    if (std.posix.getenv("HOME")) |value| {
+        return value;
+    } else {
+        std.log.err("HOME environment variable not set.", .{});
+        std.process.exit(1);
+    }
+}
+
+fn setDataPath(alloc: std.mem.Allocator) ![]u8 {
+    var current_env = try std.process.getEnvMap(alloc);
+    defer current_env.deinit();
+    if (current_env.get("XDG_DATA_HOME")) |value| {
+        std.debug.print("{s}", .{value});
+        return try alloc.dupe(u8, value);
+    } else {
+        const home_path = try getHome();
+        return try std.fmt.allocPrint(alloc, "{s}/.local/share/api-warden", .{home_path});
+    }
+}
+
 fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
     var client = std.http.Client{ .allocator = alloc };
     defer client.deinit();
@@ -42,6 +63,9 @@ pub fn main() !void {
         return;
     }
 
+    const data_path = try setDataPath(allocator);
+    defer allocator.free(data_path);
+    std.debug.print("{s}", .{data_path});
     const arguments = args[1..args.len];
     const pid = try startProcess(arguments, allocator);
     std.debug.print("process ID: {d}", .{pid});
