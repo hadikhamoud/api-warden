@@ -44,6 +44,11 @@ fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
     return HealthzResponse{ .status = status_copy };
 }
 
+fn post(uri: []const u8, headers: std.StringHashMap, alloc: std.mem.Allocator) !void {
+    var client = std.http.Client{ .allocator = alloc };
+    defer client.deinit();
+}
+
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
     try child.spawn();
