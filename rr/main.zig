@@ -81,11 +81,19 @@ pub fn main() !void {
         else => return err,
     }
     defer allocator.free(data_path);
-    const url = args[1];
-    const arguments = args[1..args.len];
-    const pid = try startProcess(arguments, allocator);
-    const response = try get(url, allocator);
-    defer allocator.free(response);
-    std.debug.print("{s}", .{response});
-    std.debug.print("process ID: {d}", .{pid});
+
+    const cmd = args[1];
+    if (std.mem.eql(u8, cmd, "get")) {
+        const url = args[2];
+        const response = try get(url, allocator);
+        defer allocator.free(response);
+        std.debug.print("{s}", .{response});
+    } else if (std.mem.eql(u8, cmd, "run")) {
+        const arguments = args[2..args.len];
+        const pid = try startProcess(arguments, allocator);
+        std.debug.print("\nprocess ID: {d}", .{pid});
+    } else {
+        std.debug.print("\nWrite a command", .{});
+    }
+    return;
 }
