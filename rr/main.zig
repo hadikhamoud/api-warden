@@ -10,19 +10,18 @@ fn getHome() ![]const u8 {
     }
 }
 
-fn setDataPath(alloc: std.mem.Allocator) ![]u8 {
+fn setDataPath(alloc: std.mem.Allocator) ![]const u8 {
     var current_env = try std.process.getEnvMap(alloc);
     defer current_env.deinit();
     if (current_env.get("XDG_DATA_HOME")) |value| {
-        std.debug.print("{s}", .{value});
-        return try alloc.dupe(u8, value);
+        return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
     } else {
         const home_path = try getHome();
         return try std.fmt.allocPrint(alloc, "{s}/.local/share/api-warden", .{home_path});
     }
 }
 
-fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
+fn get(uri: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     var client = std.http.Client{ .allocator = alloc };
     defer client.deinit();
 
@@ -34,19 +33,26 @@ fn get(uri: []const u8, alloc: std.mem.Allocator) !HealthzResponse {
         std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
     }
 
+    const items = try buffer.toOwnedSlice();
+    return items;
+}
+
+fn post(uri: []const u8, headers: std.StringHashMap, alloc: std.mem.Allocator, comptime T: type, response_format: T) !void {
+    var client = std.http.Client{ .allocator = alloc };
+    defer client.deinit();
+    var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
+    defer buffer.deinit();
+    const response = try client.fetch(.{ .method = .POST, .location = .{ .url = uri }, .extra_headers = headers, .response_writer = &buffer.writer });
+
+    if (response.status != .ok) {
+        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
+    }
+
     var list = buffer.toArrayList();
     defer list.deinit(alloc);
     const items: []u8 = list.items;
-
-    const parsed = try std.json.parseFromSlice(*HealthzResponse, alloc, items, .{});
+    const parsed = try std.json.parseFromSlice(*response_format, alloc, items, .{});
     defer parsed.deinit();
-    const status_copy = try alloc.dupe(u8, parsed.value.status);
-    return HealthzResponse{ .status = status_copy };
-}
-
-fn post(uri: []const u8, headers: std.StringHashMap, alloc: std.mem.Allocator) !void {
-    var client = std.http.Client{ .allocator = alloc };
-    defer client.deinit();
 }
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
@@ -69,9 +75,17 @@ pub fn main() !void {
     }
 
     const data_path = try setDataPath(allocator);
+    const mode: u32 = 0o755;
+    if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    }
     defer allocator.free(data_path);
-    std.debug.print("{s}", .{data_path});
+    const url = args[1];
     const arguments = args[1..args.len];
     const pid = try startProcess(arguments, allocator);
+    const response = try get(url, allocator);
+    defer allocator.free(response);
+    std.debug.print("{s}", .{response});
     std.debug.print("process ID: {d}", .{pid});
 }
