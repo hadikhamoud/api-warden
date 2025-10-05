@@ -37,22 +37,26 @@ fn get(uri: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     return items;
 }
 
-fn post(uri: []const u8, headers: std.StringHashMap, alloc: std.mem.Allocator, comptime T: type, response_format: T) !void {
+fn post(uri: []const u8, headers: []const std.http.Header, payload: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     var client = std.http.Client{ .allocator = alloc };
     defer client.deinit();
     var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
     defer buffer.deinit();
-    const response = try client.fetch(.{ .method = .POST, .location = .{ .url = uri }, .extra_headers = headers, .response_writer = &buffer.writer });
+
+    const response = try client.fetch(.{
+        .method = .POST,
+        .location = .{ .url = uri },
+        .extra_headers = headers,
+        .response_writer = &buffer.writer,
+        .payload = payload,
+    });
 
     if (response.status != .ok) {
         std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
     }
 
-    var list = buffer.toArrayList();
-    defer list.deinit(alloc);
-    const items: []u8 = list.items;
-    const parsed = try std.json.parseFromSlice(*response_format, alloc, items, .{});
-    defer parsed.deinit();
+    const items = buffer.toOwnedSlice();
+    return items;
 }
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
@@ -92,6 +96,16 @@ pub fn main() !void {
         const arguments = args[2..args.len];
         const pid = try startProcess(arguments, allocator);
         std.debug.print("\nprocess ID: {d}", .{pid});
+    } else if (std.mem.eql(u8, cmd, "post")) {
+        const headers = &[_]std.http.Header{
+            .{ .name = "X-API-Key", .value = "oY7jod4pmv6JxfkBXeFoXbFzkIAhC6yip-ue9Il8kj0" },
+            .{ .name = "Content-Type", .value = "application/json" },
+        };
+        const url = args[2];
+        const body = if (args.len > 3) args[3] else "";
+        const response = try post(url, headers, body, allocator);
+        defer allocator.free(response);
+        std.debug.print("{s}", .{response});
     } else {
         std.debug.print("\nWrite a command", .{});
     }
