@@ -98,7 +98,7 @@ pub fn main() !void {
         std.debug.print("\nprocess ID: {d}", .{pid});
     } else if (std.mem.eql(u8, cmd, "post")) {
         const headers = &[_]std.http.Header{
-            .{ .name = "X-API-Key", .value = "oY7jod4pmv6JxfkBXeFoXbFzkIAhC6yip-ue9Il8kj0" },
+            .{ .name = "X-API-Key", .value = "" },
             .{ .name = "Content-Type", .value = "application/json" },
         };
         const url = args[2];
