@@ -21,6 +21,17 @@ fn setDataPath(alloc: std.mem.Allocator) ![]const u8 {
     }
 }
 
+fn setConfigPath(alloc: std.mem.Allocator) ![]const u8 {
+    var current_env = try std.process.getEnvMap(alloc);
+    defer current_env.deinit();
+    if (current_env.get("XDG_CONFIG_HOME")) |value| {
+        return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
+    } else {
+        const home_path = try getHome();
+        return try std.fmt.allocPrint(alloc, "{s}/.config/api-warden", .{home_path});
+    }
+}
+
 fn get(uri: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     var client = std.http.Client{ .allocator = alloc };
     defer client.deinit();
@@ -86,6 +97,13 @@ pub fn main() !void {
     }
     defer allocator.free(data_path);
 
+    const config_path = try setConfigPath(allocator);
+    if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    }
+    defer allocator.free(config_path);
+
     const cmd = args[1];
     if (std.mem.eql(u8, cmd, "get")) {
         const url = args[2];
@@ -95,7 +113,7 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, cmd, "run")) {
         const arguments = args[2..args.len];
         const pid = try startProcess(arguments, allocator);
-        std.debug.print("\nprocess ID: {d}", .{pid});
+        std.debug.print("\nprocess ID: {d}\n", .{pid});
     } else if (std.mem.eql(u8, cmd, "post")) {
         const headers = &[_]std.http.Header{
             .{ .name = "X-API-Key", .value = "" },
