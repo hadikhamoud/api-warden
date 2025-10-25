@@ -1,5 +1,5 @@
 const std = @import("std");
-const HealthzResponse = struct { status: []const u8 };
+const rest_methods = @import("rest.zig");
 
 fn getHome() ![]const u8 {
     if (std.posix.getenv("HOME")) |value| {
@@ -32,47 +32,9 @@ fn setConfigPath(alloc: std.mem.Allocator) ![]const u8 {
     }
 }
 
-fn get(uri: []const u8, alloc: std.mem.Allocator) ![]const u8 {
-    var client = std.http.Client{ .allocator = alloc };
-    defer client.deinit();
-
-    var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
-    defer buffer.deinit();
-    const headers = &[_]std.http.Header{};
-    const response = try client.fetch(.{ .method = .GET, .location = .{ .url = uri }, .extra_headers = headers, .response_writer = &buffer.writer });
-    if (response.status != .ok) {
-        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
-    }
-
-    const items = try buffer.toOwnedSlice();
-    return items;
-}
-
-fn post(uri: []const u8, headers: []const std.http.Header, payload: []const u8, alloc: std.mem.Allocator) ![]const u8 {
-    var client = std.http.Client{ .allocator = alloc };
-    defer client.deinit();
-    var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
-    defer buffer.deinit();
-
-    const response = try client.fetch(.{
-        .method = .POST,
-        .location = .{ .url = uri },
-        .extra_headers = headers,
-        .response_writer = &buffer.writer,
-        .payload = payload,
-    });
-
-    if (response.status != .ok) {
-        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
-    }
-
-    const items = buffer.toOwnedSlice();
-    return items;
-}
-
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
-    try child.spawn();
+    _ = try child.spawnAndWait();
     return child.id;
 }
 
@@ -107,7 +69,7 @@ pub fn main() !void {
     const cmd = args[1];
     if (std.mem.eql(u8, cmd, "get")) {
         const url = args[2];
-        const response = try get(url, allocator);
+        const response = try rest_methods.get(url, allocator);
         defer allocator.free(response);
         std.debug.print("{s}", .{response});
     } else if (std.mem.eql(u8, cmd, "run")) {
@@ -121,7 +83,7 @@ pub fn main() !void {
         };
         const url = args[2];
         const body = if (args.len > 3) args[3] else "";
-        const response = try post(url, headers, body, allocator);
+        const response = try rest_methods.post(url, headers, body, allocator);
         defer allocator.free(response);
         std.debug.print("{s}", .{response});
     } else {
