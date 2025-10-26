@@ -1,36 +1,6 @@
 const std = @import("std");
 const rest_methods = @import("rest.zig");
-
-fn getHome() ![]const u8 {
-    if (std.posix.getenv("HOME")) |value| {
-        return value;
-    } else {
-        std.log.err("HOME environment variable not set.", .{});
-        std.process.exit(1);
-    }
-}
-
-fn setDataPath(alloc: std.mem.Allocator) ![]const u8 {
-    var current_env = try std.process.getEnvMap(alloc);
-    defer current_env.deinit();
-    if (current_env.get("XDG_DATA_HOME")) |value| {
-        return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
-    } else {
-        const home_path = try getHome();
-        return try std.fmt.allocPrint(alloc, "{s}/.local/share/api-warden", .{home_path});
-    }
-}
-
-fn setConfigPath(alloc: std.mem.Allocator) ![]const u8 {
-    var current_env = try std.process.getEnvMap(alloc);
-    defer current_env.deinit();
-    if (current_env.get("XDG_CONFIG_HOME")) |value| {
-        return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
-    } else {
-        const home_path = try getHome();
-        return try std.fmt.allocPrint(alloc, "{s}/.config/api-warden", .{home_path});
-    }
-}
+const xdg = @import("warden_paths.zig");
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
@@ -51,7 +21,7 @@ pub fn main() !void {
         return;
     }
 
-    const data_path = try setDataPath(allocator);
+    const data_path = try xdg.setDataPath(allocator);
     const mode: u32 = 0o755;
     if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
         error.PathAlreadyExists => {},
@@ -59,7 +29,7 @@ pub fn main() !void {
     }
     defer allocator.free(data_path);
 
-    const config_path = try setConfigPath(allocator);
+    const config_path = try xdg.setConfigPath(allocator);
     if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
