@@ -1,6 +1,6 @@
 const std = @import("std");
 const rest_methods = @import("rest.zig");
-const xdg = @import("warden_paths.zig");
+const xdg = @import("paths.zig");
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
@@ -21,21 +21,7 @@ pub fn main() !void {
         return;
     }
 
-    const data_path = try xdg.setDataPath(allocator);
-    const mode: u32 = 0o755;
-    if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    }
-    defer allocator.free(data_path);
-
-    const config_path = try xdg.setConfigPath(allocator);
-    if (std.posix.mkdir(data_path, mode)) |_| {} else |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    }
-    defer allocator.free(config_path);
-
+    try xdg.initializeWardenFiles(allocator);
     const cmd = args[1];
     if (std.mem.eql(u8, cmd, "get")) {
         const url = args[2];
