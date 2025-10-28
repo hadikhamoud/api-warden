@@ -1,6 +1,9 @@
 const std = @import("std");
 const rest_methods = @import("rest.zig");
 const xdg = @import("paths.zig");
+const logger = @import("logger.zig");
+
+pub const std_options = logger.std_options;
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
@@ -17,7 +20,7 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
-        std.debug.print("Error", .{});
+        std.log.err("Error", .{});
         return;
     }
 
@@ -27,11 +30,11 @@ pub fn main() !void {
         const url = args[2];
         const response = try rest_methods.get(url, allocator);
         defer allocator.free(response);
-        std.debug.print("{s}", .{response});
+        std.log.info("{s}", .{response});
     } else if (std.mem.eql(u8, cmd, "run")) {
         const arguments = args[2..args.len];
         const pid = try startProcess(arguments, allocator);
-        std.debug.print("\nprocess ID: {d}\n", .{pid});
+        std.log.info("process ID: {d}\n", .{pid});
     } else if (std.mem.eql(u8, cmd, "post")) {
         const headers = &[_]std.http.Header{
             .{ .name = "X-API-Key", .value = "" },
@@ -41,9 +44,9 @@ pub fn main() !void {
         const body = if (args.len > 3) args[3] else "";
         const response = try rest_methods.post(url, headers, body, allocator);
         defer allocator.free(response);
-        std.debug.print("{s}", .{response});
+        std.log.info("{s}", .{response});
     } else {
-        std.debug.print("\nWrite a command", .{});
+        std.log.info("\nWrite a command", .{});
     }
     return;
 }

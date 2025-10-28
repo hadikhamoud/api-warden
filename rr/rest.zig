@@ -9,7 +9,7 @@ pub fn get(uri: []const u8, alloc: std.mem.Allocator) ![]const u8 {
     const headers = &[_]std.http.Header{};
     const response = try client.fetch(.{ .method = .GET, .location = .{ .url = uri }, .extra_headers = headers, .response_writer = &buffer.writer });
     if (response.status != .ok) {
-        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
+        std.log.err("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
     }
 
     const items = try buffer.toOwnedSlice();
@@ -31,7 +31,7 @@ pub fn post(uri: []const u8, headers: []const std.http.Header, payload: []const 
     });
 
     if (response.status != .ok) {
-        std.log.debug("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
+        std.log.err("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
     }
 
     const items = buffer.toOwnedSlice();
