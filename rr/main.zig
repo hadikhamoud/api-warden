@@ -7,7 +7,7 @@ pub const std_options = logger.std_options;
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     var child = std.process.Child.init(arguments, alloc);
-    _ = try child.spawnAndWait();
+    _ = try child.spawn();
     return child.id;
 }
 
