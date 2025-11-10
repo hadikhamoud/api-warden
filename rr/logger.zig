@@ -20,7 +20,10 @@ pub fn structLogFn(
             return,
     } ++ "): ";
 
-    const prefix = "[" ++ comptime level.asText() ++ "] ";
+    const prefix = if (level == .info)
+        "\x1b[32m[" ++ comptime level.asText() ++ "]\x1b[0m "
+    else
+        "\x1b[31m[" ++ comptime level.asText() ++ "]\x1b[0m ";
 
     std.debug.lockStdErr();
     defer std.debug.unlockStdErr();

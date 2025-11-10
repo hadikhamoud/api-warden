@@ -2,6 +2,7 @@ const std = @import("std");
 const rest_methods = @import("rest.zig");
 const xdg = @import("paths.zig");
 const logger = @import("logger.zig");
+const utils = @import("utils.zig");
 
 pub const std_options = logger.std_options;
 
@@ -13,16 +14,29 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
     return child.id;
 }
 
-pub fn writeWebhookDetails(alloc: std.mem.Allocator) !void {
-    const data_path = xdg.getDataPath(alloc);
-    const webhook_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{});
+pub fn writeWebhookDetails(webhook_details: WebhookDetails, alloc: std.mem.Allocator) !void {
+    const data_path = try xdg.getDataPath(alloc);
+    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
     defer alloc.free(data_path);
-    defer alloc.free(webhook_path);
+    defer alloc.free(webhook_dir_path);
     const mode: u32 = 0o755;
-    if (std.posix.mkdir(webhook_path, mode)) |_| {} else |err| switch (err) {
+    if (std.posix.mkdir(webhook_dir_path, mode)) |_| {} else |err| switch (err) {
         error.PathAlreadyExists => {},
         else => return err,
     }
+
+    const json_string = try std.fmt.allocPrint(alloc, "{f}", .{std.json.fmt(webhook_details, .{})});
+
+    const webhook_name = utils.genHash(json_string);
+    const webhook_absolute_path = try std.fmt.allocPrint(alloc, "{s}/{s}.json", .{ webhook_dir_path, webhook_name });
+    defer alloc.free(json_string);
+    defer alloc.free(webhook_absolute_path);
+    std.log.info("file path: {s}", .{webhook_absolute_path});
+    const file = try std.fs.createFileAbsolute(webhook_absolute_path, .{ .mode = mode });
+    defer file.close();
+    try file.writeAll(json_string);
+
+    std.log.info("wrote webhook details {s} to file: ", .{webhook_name});
 }
 
 pub fn main() !void {
@@ -90,6 +104,7 @@ pub fn main() !void {
             .url = url,
             .headers = headers.items,
         };
+        _ = try writeWebhookDetails(webhook_details, allocator);
 
         std.log.info("WebhookDetails created with {d} headers\n", .{webhook_details.headers.len});
     } else {
