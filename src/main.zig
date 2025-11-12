@@ -124,7 +124,7 @@ pub fn main() !void {
     const pid = switch (builtin.os.tag) {
         .linux => std.os.linux.getpid(),
         .macos => std.c.getpid(),
-        .windows => std.os.windows.kernel32.GetCurrentProcessId(),
+        .windows => std.os.windows.GetCurrentProcessId(),
         else => @compileError("Unsupported operating system"),
     };
     std.log.info("Current PID: {d}\n", .{pid});
