@@ -33,10 +33,13 @@ const ProcessResult = struct {
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
     try child.spawn();
-    const raw_pid = child.id;
     const pid: i32 = switch (builtin.os.tag) {
-        .windows => @intCast(raw_pid),
-        else => raw_pid,
+        .windows => blk: {
+            const handle = child.id;
+            const proc_id = std.os.windows.kernel32.GetProcessId(handle);
+            break :blk @intCast(proc_id);
+        },
+        else => child.id,
     };
 
     const term = child.wait() catch |err| {

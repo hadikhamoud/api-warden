@@ -1,13 +1,21 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-fn getHome() ![]const u8 {
+fn getHome(alloc: std.mem.Allocator) ![]const u8 {
     const env_var = if (builtin.os.tag == .windows) "USERPROFILE" else "HOME";
-    if (std.posix.getenv(env_var)) |value| {
-        return value;
+
+    if (builtin.os.tag == .windows) {
+        return std.process.getEnvVarOwned(alloc, env_var) catch |err| {
+            std.log.err("{s} environment variable not set: {any}", .{ env_var, err });
+            std.process.exit(1);
+        };
     } else {
-        std.log.err("{s} environment variable not set.", .{env_var});
-        std.process.exit(1);
+        if (std.posix.getenv(env_var)) |value| {
+            return value;
+        } else {
+            std.log.err("{s} environment variable not set.", .{env_var});
+            std.process.exit(1);
+        }
     }
 }
 
@@ -16,14 +24,15 @@ pub fn getDataPath(alloc: std.mem.Allocator) ![]const u8 {
     defer current_env.deinit();
 
     if (builtin.os.tag == .windows) {
-        const home_path = try getHome();
+        const home_path = try getHome(alloc);
+        defer alloc.free(home_path);
         return try std.fmt.allocPrint(alloc, "{s}\\AppData\\Local\\api-warden", .{home_path});
     }
 
     if (current_env.get("XDG_DATA_HOME")) |value| {
         return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
     } else {
-        const home_path = try getHome();
+        const home_path = try getHome(alloc);
         return try std.fmt.allocPrint(alloc, "{s}/.local/share/api-warden", .{home_path});
     }
 }
@@ -33,14 +42,15 @@ pub fn getConfigPath(alloc: std.mem.Allocator) ![]const u8 {
     defer current_env.deinit();
 
     if (builtin.os.tag == .windows) {
-        const home_path = try getHome();
+        const home_path = try getHome(alloc);
+        defer alloc.free(home_path);
         return try std.fmt.allocPrint(alloc, "{s}\\AppData\\Roaming\\api-warden", .{home_path});
     }
 
     if (current_env.get("XDG_CONFIG_HOME")) |value| {
         return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
     } else {
-        const home_path = try getHome();
+        const home_path = try getHome(alloc);
         return try std.fmt.allocPrint(alloc, "{s}/.config/api-warden", .{home_path});
     }
 }
