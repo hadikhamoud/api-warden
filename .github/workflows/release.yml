@@ -29,10 +29,6 @@ jobs:
             target: aarch64-macos
             zig-target: aarch64-macos
             artifact-name: api-warden-macos-aarch64
-          - os: windows-latest
-            target: x86_64-windows
-            zig-target: x86_64-windows-gnu
-            artifact-name: api-warden-windows-x86_64.exe
 
     steps:
       - name: Checkout code
