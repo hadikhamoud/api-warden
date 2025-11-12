@@ -123,6 +123,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const pid = switch (builtin.os.tag) {
         .linux => std.os.linux.getpid(),
+        .macos => std.c.getpid(),
         .windows => std.os.windows.kernel32.GetCurrentProcessId(),
         else => @compileError("Unsupported operating system"),
     };
