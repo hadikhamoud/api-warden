@@ -33,14 +33,7 @@ const ProcessResult = struct {
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
     try child.spawn();
-    const pid: i32 = switch (builtin.os.tag) {
-        .windows => blk: {
-            const handle = child.id;
-            const proc_id = std.os.windows.kernel32.GetProcessId(handle);
-            break :blk @intCast(proc_id);
-        },
-        else => child.id,
-    };
+    const pid = child.id;
 
     const term = child.wait() catch |err| {
         if (err == error.Unexpected) {
@@ -128,10 +121,10 @@ pub fn writeWebhookDetails(webhook_details: WebhookDetails, alloc: std.mem.Alloc
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const pid: i32 = switch (builtin.os.tag) {
+    const pid = switch (builtin.os.tag) {
         .linux => std.os.linux.getpid(),
         .macos => std.c.getpid(),
-        .windows => @intCast(std.os.windows.GetCurrentProcessId()),
+        .windows => std.os.windows.GetCurrentProcessId(),
         else => @compileError("Unsupported operating system"),
     };
     std.log.info("Current PID: {d}\n", .{pid});
