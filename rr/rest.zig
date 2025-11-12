@@ -34,6 +34,6 @@ pub fn post(uri: []const u8, headers: []const std.http.Header, payload: []const 
         std.log.err("Error {d} {s}", .{ response.status, response.status.phrase() orelse "???" });
     }
 
-    const items = buffer.toOwnedSlice();
+    const items = try buffer.toOwnedSlice();
     return items;
 }

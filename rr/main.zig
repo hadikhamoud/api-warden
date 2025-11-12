@@ -8,10 +8,90 @@ pub const std_options = logger.std_options;
 
 const WebhookDetails = struct { url: []const u8, headers: []std.http.Header };
 
-fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !i32 {
+const WebhookList = struct {
+    items: []WebhookDetails,
+    parsed_objects: []std.json.Parsed(WebhookDetails),
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *WebhookList) void {
+        for (self.parsed_objects) |parsed| {
+            parsed.deinit();
+        }
+        self.allocator.free(self.parsed_objects);
+        self.allocator.free(self.items);
+    }
+};
+
+const ProcessResult = struct {
+    pid: i32,
+    exit_code: ?i32,
+    interrupted: bool,
+};
+
+fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
-    _ = try child.spawnAndWait();
-    return child.id;
+    try child.spawn();
+    const pid = child.id;
+
+    // Wait for child to complete and capture the result
+    const term = child.wait() catch |err| {
+        // If interrupted, the child might still be running
+        if (err == error.Unexpected) {
+            return ProcessResult{
+                .pid = pid,
+                .exit_code = null,
+                .interrupted = true,
+            };
+        }
+        return err;
+    };
+
+    const exit_code: i32 = switch (term) {
+        .Exited => |code| @intCast(code),
+        .Signal => |sig| -@as(i32, @intCast(sig)),
+        .Stopped => |sig| -@as(i32, @intCast(sig)),
+        .Unknown => -1,
+    };
+
+    return ProcessResult{
+        .pid = pid,
+        .exit_code = exit_code,
+        .interrupted = false,
+    };
+}
+
+fn getWebhookDetails(alloc: std.mem.Allocator) !WebhookList {
+    var webhooks = try std.ArrayList(WebhookDetails).initCapacity(alloc, 32);
+    var parsed_list = try std.ArrayList(std.json.Parsed(WebhookDetails)).initCapacity(alloc, 32);
+
+    const data_path = try xdg.getDataPath(alloc);
+    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
+    defer alloc.free(data_path);
+    defer alloc.free(webhook_dir_path);
+    var webhook_dir = try std.fs.openDirAbsolute(webhook_dir_path, .{ .iterate = true });
+    defer webhook_dir.close();
+    var webhook_dir_iterator = webhook_dir.iterate();
+    while (try webhook_dir_iterator.next()) |dirContent| {
+        if (dirContent.kind == .file) {
+            const webhook_file = try std.fmt.allocPrint(alloc, "{s}/{s}", .{ webhook_dir_path, dirContent.name });
+            defer alloc.free(webhook_file);
+            const file = try std.fs.openFileAbsolute(webhook_file, .{});
+            defer file.close();
+            const stat = try file.stat();
+            const buffer: []u8 = try file.readToEndAlloc(alloc, stat.size);
+            defer alloc.free(buffer);
+
+            const parsed = try std.json.parseFromSlice(WebhookDetails, alloc, buffer, .{ .allocate = .alloc_always });
+            try webhooks.append(alloc, parsed.value);
+            try parsed_list.append(alloc, parsed);
+        }
+    }
+
+    return WebhookList{
+        .items = try webhooks.toOwnedSlice(alloc),
+        .parsed_objects = try parsed_list.toOwnedSlice(alloc),
+        .allocator = alloc,
+    };
 }
 
 pub fn writeWebhookDetails(webhook_details: WebhookDetails, alloc: std.mem.Allocator) !void {
@@ -61,8 +141,25 @@ pub fn main() !void {
         std.log.info("{s}", .{response});
     } else if (std.mem.eql(u8, cmd, "run")) {
         const arguments = args[2..args.len];
+        var webhook_list = try getWebhookDetails(allocator);
+        defer webhook_list.deinit();
+        std.log.info("received {d} webhooks", .{webhook_list.items.len});
         const pid = try startProcess(arguments, allocator);
         std.log.info("process ID: {d}\n", .{pid});
+
+        const payload = try std.fmt.allocPrint(allocator,
+            \\{{
+            \\  "event_type": "process_completed",
+            \\  "data": {{
+            \\    "process_id": {d},
+            \\    "command": "{s}"
+            \\  }}
+            \\}}
+        , .{ pid, arguments[0] });
+        defer allocator.free(payload);
+
+        const response = try rest_methods.post(webhook_list.items[0].url, webhook_list.items[0].headers, payload, allocator);
+        defer allocator.free(response);
     } else if (std.mem.eql(u8, cmd, "post")) {
         const headers = &[_]std.http.Header{
             .{ .name = "X-API-Key", .value = "" },
