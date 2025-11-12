@@ -1,0 +1,92 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux
+            zig-target: x86_64-linux-gnu
+            artifact-name: api-warden-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-linux
+            zig-target: aarch64-linux-gnu
+            artifact-name: api-warden-linux-aarch64
+          - os: macos-latest
+            target: x86_64-macos
+            zig-target: x86_64-macos
+            artifact-name: api-warden-macos-x86_64
+          - os: macos-latest
+            target: aarch64-macos
+            zig-target: aarch64-macos
+            artifact-name: api-warden-macos-aarch64
+          - os: windows-latest
+            target: x86_64-windows
+            zig-target: x86_64-windows-gnu
+            artifact-name: api-warden-windows-x86_64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Build
+        run: zig build -Doptimize=ReleaseFast -Dtarget=${{ matrix.zig-target }}
+
+      - name: Package artifact (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp zig-out/bin/api-warden api-warden
+          tar -czf ${{ matrix.artifact-name }}.tar.gz api-warden
+
+      - name: Package artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          copy zig-out\bin\api-warden.exe api-warden.exe
+          tar -czf ${{ matrix.artifact-name }}.tar.gz api-warden.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
