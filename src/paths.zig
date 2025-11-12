@@ -1,10 +1,12 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 fn getHome() ![]const u8 {
-    if (std.posix.getenv("HOME")) |value| {
+    const env_var = if (builtin.os.tag == .windows) "USERPROFILE" else "HOME";
+    if (std.posix.getenv(env_var)) |value| {
         return value;
     } else {
-        std.log.err("HOME environment variable not set.", .{});
+        std.log.err("{s} environment variable not set.", .{env_var});
         std.process.exit(1);
     }
 }
@@ -12,6 +14,12 @@ fn getHome() ![]const u8 {
 pub fn getDataPath(alloc: std.mem.Allocator) ![]const u8 {
     var current_env = try std.process.getEnvMap(alloc);
     defer current_env.deinit();
+
+    if (builtin.os.tag == .windows) {
+        const home_path = try getHome();
+        return try std.fmt.allocPrint(alloc, "{s}\\AppData\\Local\\api-warden", .{home_path});
+    }
+
     if (current_env.get("XDG_DATA_HOME")) |value| {
         return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
     } else {
@@ -23,6 +31,12 @@ pub fn getDataPath(alloc: std.mem.Allocator) ![]const u8 {
 pub fn getConfigPath(alloc: std.mem.Allocator) ![]const u8 {
     var current_env = try std.process.getEnvMap(alloc);
     defer current_env.deinit();
+
+    if (builtin.os.tag == .windows) {
+        const home_path = try getHome();
+        return try std.fmt.allocPrint(alloc, "{s}\\AppData\\Roaming\\api-warden", .{home_path});
+    }
+
     if (current_env.get("XDG_CONFIG_HOME")) |value| {
         return try std.fmt.allocPrint(alloc, "{s}/api-warden", .{value});
     } else {
