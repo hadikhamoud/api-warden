@@ -216,6 +216,17 @@ pub fn main() !void {
         _ = try writeWebhookDetails(webhook_details, allocator);
 
         std.log.info("WebhookDetails created with {d} headers\n", .{webhook_details.headers.len});
+    } else if (std.mem.eql(u8, cmd, "list-webhooks")) {
+        var webhook_list = try getWebhookDetails(allocator);
+        defer webhook_list.deinit();
+        for (webhook_list.items, 0..) |webhook, index| {
+            std.debug.print("\nWebhook {d}:\n", .{index});
+            std.debug.print("url: {s}\n", .{webhook.url});
+            std.debug.print("headers: \n", .{});
+            for (webhook.headers) |header| {
+                std.debug.print("\t {s}: {s}\n", .{ header.name, header.value });
+            }
+        }
     } else {
         const arguments = args[1..args.len];
         var webhook_list = try getWebhookDetails(allocator);
