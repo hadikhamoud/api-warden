@@ -22,6 +22,13 @@ const WebhookList = struct {
         self.allocator.free(self.parsed_objects);
         self.allocator.free(self.items);
     }
+    pub fn sortByUrl(self: *WebhookList) void {
+        std.mem.sort(WebhookDetails, self.items, {}, struct {
+            fn lessThan(_: void, a: WebhookDetails, b: WebhookDetails) bool {
+                return std.mem.lessThan(u8, a.url, b.url);
+            }
+        }.lessThan);
+    }
 };
 
 const ProcessResult = struct {
@@ -58,6 +65,25 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
         .exit_code = exit_code,
         .interrupted = false,
     };
+}
+
+fn deleteWebhook(webhook_id: i32, alloc: std.mem.Allocator) !void {
+    var webhook_list = try getWebhookDetails(alloc);
+    webhook_list.sortByUrl();
+    std.log.info("webhook_id, {d}", .{webhook_id});
+    defer webhook_list.deinit();
+    const data_path = try xdg.getDataPath(alloc);
+    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
+    defer alloc.free(data_path);
+    defer alloc.free(webhook_dir_path);
+    const webhook_details = webhook_list.items[@intCast(webhook_id)];
+    const json_string = try std.fmt.allocPrint(alloc, "{f}", .{std.json.fmt(webhook_details, .{})});
+    const webhook_name = utils.genHash(json_string);
+    const webhook_absolute_path = try std.fmt.allocPrint(alloc, "{s}/{s}.json", .{ webhook_dir_path, webhook_name });
+    defer alloc.free(json_string);
+    defer alloc.free(webhook_absolute_path);
+    try std.fs.deleteFileAbsolute(webhook_absolute_path);
+    std.log.info("Webhook details deleted!", .{});
 }
 
 fn getWebhookDetails(alloc: std.mem.Allocator) !WebhookList {
@@ -149,6 +175,7 @@ pub fn main() !void {
     } else if (std.mem.eql(u8, cmd, "run")) {
         const arguments = args[2..args.len];
         var webhook_list = try getWebhookDetails(allocator);
+        webhook_list.sortByUrl();
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         const result = try startProcess(arguments, allocator);
@@ -227,6 +254,13 @@ pub fn main() !void {
                 std.debug.print("\t {s}: {s}\n", .{ header.name, header.value });
             }
         }
+    } else if (std.mem.eql(u8, cmd, "delete-webhook")) {
+        if (args.len < 2) {
+            std.log.err("Please specify which webhook id you want to delete", .{});
+            return;
+        }
+        const selected_id: i32 = try std.fmt.parseInt(i32, args[2], 10);
+        try deleteWebhook(selected_id, allocator);
     } else {
         const arguments = args[1..args.len];
         var webhook_list = try getWebhookDetails(allocator);
