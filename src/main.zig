@@ -5,31 +5,12 @@ const logger = @import("logger.zig");
 const utils = @import("utils.zig");
 const builtin = @import("builtin");
 const time = @import("datetime.zig");
+const webhooks = @import("webhooks.zig");
 
 pub const std_options = logger.std_options;
 
-const WebhookDetails = struct { url: []const u8, headers: []std.http.Header };
-
-const WebhookList = struct {
-    items: []WebhookDetails,
-    parsed_objects: []std.json.Parsed(WebhookDetails),
-    allocator: std.mem.Allocator,
-
-    pub fn deinit(self: *WebhookList) void {
-        for (self.parsed_objects) |parsed| {
-            parsed.deinit();
-        }
-        self.allocator.free(self.parsed_objects);
-        self.allocator.free(self.items);
-    }
-    pub fn sortByUrl(self: *WebhookList) void {
-        std.mem.sort(WebhookDetails, self.items, {}, struct {
-            fn lessThan(_: void, a: WebhookDetails, b: WebhookDetails) bool {
-                return std.mem.lessThan(u8, a.url, b.url);
-            }
-        }.lessThan);
-    }
-};
+const WebhookDetails = webhooks.WebhookDetails;
+const WebhookList = webhooks.WebhookList;
 
 const ProcessResult = struct {
     pid: i32,
@@ -67,84 +48,6 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     };
 }
 
-fn deleteWebhook(webhook_id: i32, alloc: std.mem.Allocator) !void {
-    var webhook_list = try getWebhookDetails(alloc);
-    webhook_list.sortByUrl();
-    std.log.info("webhook_id, {d}", .{webhook_id});
-    defer webhook_list.deinit();
-    const data_path = try xdg.getDataPath(alloc);
-    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
-    defer alloc.free(data_path);
-    defer alloc.free(webhook_dir_path);
-    const webhook_details = webhook_list.items[@intCast(webhook_id)];
-    const json_string = try std.fmt.allocPrint(alloc, "{f}", .{std.json.fmt(webhook_details, .{})});
-    const webhook_name = utils.genHash(json_string);
-    const webhook_absolute_path = try std.fmt.allocPrint(alloc, "{s}/{s}.json", .{ webhook_dir_path, webhook_name });
-    defer alloc.free(json_string);
-    defer alloc.free(webhook_absolute_path);
-    try std.fs.deleteFileAbsolute(webhook_absolute_path);
-    std.log.info("Webhook details deleted!", .{});
-}
-
-fn getWebhookDetails(alloc: std.mem.Allocator) !WebhookList {
-    var webhooks = try std.ArrayList(WebhookDetails).initCapacity(alloc, 32);
-    var parsed_list = try std.ArrayList(std.json.Parsed(WebhookDetails)).initCapacity(alloc, 32);
-
-    const data_path = try xdg.getDataPath(alloc);
-    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
-    defer alloc.free(data_path);
-    defer alloc.free(webhook_dir_path);
-    var webhook_dir = try std.fs.openDirAbsolute(webhook_dir_path, .{ .iterate = true });
-    defer webhook_dir.close();
-    var webhook_dir_iterator = webhook_dir.iterate();
-    while (try webhook_dir_iterator.next()) |dirContent| {
-        if (dirContent.kind == .file) {
-            const webhook_file = try std.fmt.allocPrint(alloc, "{s}/{s}", .{ webhook_dir_path, dirContent.name });
-            defer alloc.free(webhook_file);
-            const file = try std.fs.openFileAbsolute(webhook_file, .{});
-            defer file.close();
-            const stat = try file.stat();
-            const buffer: []u8 = try file.readToEndAlloc(alloc, stat.size);
-            defer alloc.free(buffer);
-
-            const parsed = try std.json.parseFromSlice(WebhookDetails, alloc, buffer, .{ .allocate = .alloc_always });
-            try webhooks.append(alloc, parsed.value);
-            try parsed_list.append(alloc, parsed);
-        }
-    }
-
-    return WebhookList{
-        .items = try webhooks.toOwnedSlice(alloc),
-        .parsed_objects = try parsed_list.toOwnedSlice(alloc),
-        .allocator = alloc,
-    };
-}
-
-pub fn writeWebhookDetails(webhook_details: WebhookDetails, alloc: std.mem.Allocator) !void {
-    const data_path = try xdg.getDataPath(alloc);
-    const webhook_dir_path = try std.fmt.allocPrint(alloc, "{s}/webhooks", .{data_path});
-    defer alloc.free(data_path);
-    defer alloc.free(webhook_dir_path);
-    const mode: u32 = 0o755;
-    if (std.posix.mkdir(webhook_dir_path, mode)) |_| {} else |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    }
-
-    const json_string = try std.fmt.allocPrint(alloc, "{f}", .{std.json.fmt(webhook_details, .{})});
-
-    const webhook_name = utils.genHash(json_string);
-    const webhook_absolute_path = try std.fmt.allocPrint(alloc, "{s}/{s}.json", .{ webhook_dir_path, webhook_name });
-    defer alloc.free(json_string);
-    defer alloc.free(webhook_absolute_path);
-    std.log.info("file path: {s}", .{webhook_absolute_path});
-    const file = try std.fs.createFileAbsolute(webhook_absolute_path, .{ .mode = mode });
-    defer file.close();
-    try file.writeAll(json_string);
-
-    std.log.info("wrote webhook details {s} to file: ", .{webhook_name});
-}
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const pid = switch (builtin.os.tag) {
@@ -153,7 +56,7 @@ pub fn main() !void {
         .windows => std.os.windows.GetCurrentProcessId(),
         else => @compileError("Unsupported operating system"),
     };
-    std.log.info("Current PID: {d}\n", .{pid});
+    std.log.info("Current PID: {d}", .{pid});
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
 
@@ -174,7 +77,7 @@ pub fn main() !void {
         std.log.info("{s}", .{response});
     } else if (std.mem.eql(u8, cmd, "run")) {
         const arguments = args[2..args.len];
-        var webhook_list = try getWebhookDetails(allocator);
+        var webhook_list = try WebhookList.load(allocator);
         webhook_list.sortByUrl();
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
@@ -240,11 +143,11 @@ pub fn main() !void {
             .url = url,
             .headers = headers.items,
         };
-        _ = try writeWebhookDetails(webhook_details, allocator);
+        _ = try webhooks.writeWebhookDetails(webhook_details, allocator);
 
         std.log.info("WebhookDetails created with {d} headers\n", .{webhook_details.headers.len});
     } else if (std.mem.eql(u8, cmd, "list-webhooks")) {
-        var webhook_list = try getWebhookDetails(allocator);
+        var webhook_list = try WebhookList.load(allocator);
         defer webhook_list.deinit();
         for (webhook_list.items, 0..) |webhook, index| {
             std.debug.print("\nWebhook {d}:\n", .{index});
@@ -260,10 +163,10 @@ pub fn main() !void {
             return;
         }
         const selected_id: i32 = try std.fmt.parseInt(i32, args[2], 10);
-        try deleteWebhook(selected_id, allocator);
+        try webhooks.deleteWebhook(selected_id, allocator);
     } else {
         const arguments = args[1..args.len];
-        var webhook_list = try getWebhookDetails(allocator);
+        var webhook_list = try WebhookList.load(allocator);
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         var timer = try std.time.Timer.start();
