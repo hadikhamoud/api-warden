@@ -16,28 +16,47 @@ const ProcessResult = struct {
     pid: i32,
     exit_code: ?i32,
     interrupted: bool,
-    stdout: []const u8,
     stderr: []const u8,
 };
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
     child.stderr_behavior = .Pipe;
-    child.stdout_behavior = .Pipe;
-    try child.spawn();
+    child.stdout_behavior = .Inherit;
+    child.spawn() catch |err| {
+        if (err == error.FileNotFound) {
+            const stderr_msg = try std.fmt.allocPrint(alloc, "Command not found: {s}", .{arguments[0]});
+            std.log.err("Command not found: {s}", .{arguments[0]});
+            return ProcessResult{
+                .pid = -1,
+                .exit_code = 127,
+                .interrupted = false,
+                .stderr = stderr_msg,
+            };
+        }
+        return err;
+    };
     const pid = child.id;
 
     const max_output_size = 10 * 1024 * 1024;
-    const stdout = try child.stdout.?.readToEndAlloc(alloc, max_output_size);
     const stderr = try child.stderr.?.readToEndAlloc(alloc, max_output_size);
 
     const term = child.wait() catch |err| {
+        if (err == error.FileNotFound) {
+            const stderr_msg = try std.fmt.allocPrint(alloc, "Command not found: {s}", .{arguments[0]});
+            std.log.err("Command not found: {s}", .{arguments[0]});
+            return ProcessResult{
+                .pid = -1,
+                .exit_code = 127,
+                .interrupted = false,
+                .stderr = stderr_msg,
+            };
+        }
         if (err == error.Unexpected) {
             return ProcessResult{
                 .pid = pid,
                 .exit_code = null,
                 .interrupted = true,
-                .stdout = stdout,
                 .stderr = stderr,
             };
         }
@@ -55,7 +74,6 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
         .pid = pid,
         .exit_code = exit_code,
         .interrupted = false,
-        .stdout = stdout,
         .stderr = stderr,
     };
 }
@@ -94,9 +112,10 @@ pub fn main() !void {
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         const result = try startProcess(arguments, allocator);
-        defer allocator.free(result.stdout);
         defer allocator.free(result.stderr);
-        std.log.info("process ID: {d}\n", .{result.pid});
+        if (result.pid > 0) {
+            std.log.info("process ID: {d}\n", .{result.pid});
+        }
         const full_command = try std.mem.join(allocator, " ", arguments);
         defer allocator.free(full_command);
 
@@ -201,14 +220,15 @@ pub fn main() !void {
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         var timer = try std.time.Timer.start();
         const result = try startProcess(arguments, allocator);
-        defer allocator.free(result.stdout);
         defer allocator.free(result.stderr);
         const end = timer.read();
         var buf: [32]u8 = undefined;
         const time_taken = try utils.nanosecondsToHoursBuf(end, &buf);
 
         std.log.info("Time taken {s}", .{time_taken});
-        std.log.info("process ID: {d}\n", .{result.pid});
+        if (result.pid > 0) {
+            std.log.info("process ID: {d}\n", .{result.pid});
+        }
         const full_command = try std.mem.join(allocator, " ", arguments);
         defer allocator.free(full_command);
 
