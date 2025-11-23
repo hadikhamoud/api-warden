@@ -6,6 +6,7 @@ const utils = @import("utils.zig");
 const builtin = @import("builtin");
 const time = @import("datetime.zig");
 const webhooks = @import("webhooks.zig");
+const build_options = @import("build_options");
 
 pub const std_options = logger.std_options;
 
@@ -98,8 +99,17 @@ pub fn main() !void {
         return;
     }
 
-    try xdg.initializeWardenFiles(allocator);
     const cmd = args[1];
+
+    if (std.mem.eql(u8, cmd, "version") or
+        std.mem.eql(u8, cmd, "--version") or
+        std.mem.eql(u8, cmd, "-v"))
+    {
+        std.debug.print("api-warden version {s}\n", .{build_options.version});
+        return;
+    }
+
+    try xdg.initializeWardenFiles(allocator);
     if (std.mem.eql(u8, cmd, "get")) {
         const url = args[2];
         const response = try rest_methods.get(url, allocator);

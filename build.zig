@@ -1,8 +1,30 @@
 const std = @import("std");
 
+fn getVersion(b: *std.Build) []const u8 {
+    var exit_code: u8 = undefined;
+    const result = b.runAllowFail(
+        &[_][]const u8{
+            "git",
+            "describe",
+            "--tags",
+            "--always",
+            "--dirty",
+        },
+        &exit_code,
+        .Ignore,
+    ) catch {
+        return "unknown";
+    };
+
+    return std.mem.trim(u8, result, " \n\r\t");
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    // Get version from git
+    const version = getVersion(b);
 
     // Define the executable
     const exe = b.addExecutable(.{
@@ -13,6 +35,11 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+
+    // Add version as a build option
+    const options = b.addOptions();
+    options.addOption([]const u8, "version", version);
+    exe.root_module.addImport("build_options", options.createModule());
 
     b.installArtifact(exe);
 
