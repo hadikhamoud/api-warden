@@ -20,3 +20,6 @@ cd api-warden
 zig build -Doptimize=ReleaseFast
 sudo cp zig-out/bin/api-warden /usr/local/bin/
 ```
+### TODO
+
+- [] make stdout and err capturing optional 
