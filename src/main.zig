@@ -17,40 +17,32 @@ const ProcessResult = struct {
     pid: i32,
     exit_code: ?i32,
     interrupted: bool,
-    stderr: []const u8,
 };
 
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
-    child.stderr_behavior = .Pipe;
+    child.stderr_behavior = .Inherit;
     child.stdout_behavior = .Inherit;
     child.spawn() catch |err| {
         if (err == error.FileNotFound) {
-            const stderr_msg = try std.fmt.allocPrint(alloc, "Command not found: {s}", .{arguments[0]});
             std.log.err("Command not found: {s}", .{arguments[0]});
             return ProcessResult{
                 .pid = -1,
                 .exit_code = 127,
                 .interrupted = false,
-                .stderr = stderr_msg,
             };
         }
         return err;
     };
     const pid = child.id;
 
-    const max_output_size = 10 * 1024 * 1024;
-    const stderr = try child.stderr.?.readToEndAlloc(alloc, max_output_size);
-
     const term = child.wait() catch |err| {
         if (err == error.FileNotFound) {
-            const stderr_msg = try std.fmt.allocPrint(alloc, "Command not found: {s}", .{arguments[0]});
             std.log.err("Command not found: {s}", .{arguments[0]});
             return ProcessResult{
                 .pid = -1,
                 .exit_code = 127,
                 .interrupted = false,
-                .stderr = stderr_msg,
             };
         }
         if (err == error.Unexpected) {
@@ -58,7 +50,6 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
                 .pid = pid,
                 .exit_code = null,
                 .interrupted = true,
-                .stderr = stderr,
             };
         }
         return err;
@@ -75,7 +66,6 @@ fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
         .pid = pid,
         .exit_code = exit_code,
         .interrupted = false,
-        .stderr = stderr,
     };
 }
 
@@ -135,7 +125,6 @@ pub fn main() !void {
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         const result = try startProcess(arguments, allocator);
-        defer allocator.free(result.stderr);
         if (result.pid > 0) {
             std.log.info("process ID: {d}\n", .{result.pid});
         }
@@ -143,29 +132,16 @@ pub fn main() !void {
         defer allocator.free(full_command);
 
         const exit_code = result.exit_code orelse -999;
-        const payload = if (exit_code != 0)
-            try std.fmt.allocPrint(allocator,
-                \\{{
-                \\  "event_type": "process_completed",
-                \\  "data": {{
-                \\    "process_id": {d},
-                \\    "command": "{s}",
-                \\    "exit_code": {d},
-                \\    "stderr": "{s}"
-                \\  }}
-                \\}}
-            , .{ result.pid, full_command, exit_code, result.stderr })
-        else
-            try std.fmt.allocPrint(allocator,
-                \\{{
-                \\  "event_type": "process_completed",
-                \\  "data": {{
-                \\    "process_id": {d},
-                \\    "command": "{s}",
-                \\    "exit_code": {d}
-                \\  }}
-                \\}}
-            , .{ result.pid, full_command, exit_code });
+        const payload = try std.fmt.allocPrint(allocator,
+            \\{{
+            \\  "event_type": "process_completed",
+            \\  "data": {{
+            \\    "process_id": {d},
+            \\    "command": "{s}",
+            \\    "exit_code": {d}
+            \\  }}
+            \\}}
+        , .{ result.pid, full_command, exit_code });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});
@@ -243,7 +219,6 @@ pub fn main() !void {
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         var timer = try std.time.Timer.start();
         const result = try startProcess(arguments, allocator);
-        defer allocator.free(result.stderr);
         const end = timer.read();
         var buf: [32]u8 = undefined;
         const time_taken = try utils.nanosecondsToHoursBuf(end, &buf);
@@ -256,31 +231,17 @@ pub fn main() !void {
         defer allocator.free(full_command);
 
         const exit_code = result.exit_code orelse -999;
-        const payload = if (exit_code != 0)
-            try std.fmt.allocPrint(allocator,
-                \\{{
-                \\  "event_type": "process_completed",
-                \\  "data": {{
-                \\    "time_taken": "{s}",
-                \\    "process_id": {d},
-                \\    "command": "{s}",
-                \\    "exit_code": {d},
-                \\    "stderr": "{s}"
-                \\  }}
-                \\}}
-            , .{ time_taken, result.pid, full_command, exit_code, result.stderr })
-        else
-            try std.fmt.allocPrint(allocator,
-                \\{{
-                \\  "event_type": "process_completed",
-                \\  "data": {{
-                \\    "time_taken": "{s}",
-                \\    "process_id": {d},
-                \\    "command": "{s}",
-                \\    "exit_code": {d}
-                \\  }}
-                \\}}
-            , .{ time_taken, result.pid, full_command, exit_code });
+        const payload = try std.fmt.allocPrint(allocator,
+            \\{{
+            \\  "event_type": "process_completed",
+            \\  "data": {{
+            \\    "time_taken": "{s}",
+            \\    "process_id": {d},
+            \\    "command": "{s}",
+            \\    "exit_code": {d}
+            \\  }}
+            \\}}
+        , .{ time_taken, result.pid, full_command, exit_code });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});
