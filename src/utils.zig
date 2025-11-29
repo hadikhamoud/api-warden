@@ -16,7 +16,6 @@ pub fn nanosecondsToHoursBuf(time_in_nano: u64, buf: []u8) ![]const u8 {
     const minutes = @mod(total_minutes, 60);
     const hours = @divFloor(total_minutes, 60);
 
-    // Extract microseconds and nanoseconds from the remaining time
     const remaining_nanos = @mod(time_in_nano, 1000000000);
     const microseconds = @divFloor(remaining_nanos, 1000);
     const nanoseconds = @mod(remaining_nanos, 1000);
