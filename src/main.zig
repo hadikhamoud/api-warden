@@ -215,6 +215,11 @@ pub fn main() !void {
     } else {
         const arguments = args[1..args.len];
         var webhook_list = try WebhookList.load(allocator);
+
+        if (webhook_list.items.len < 1) {
+            std.log.err("There are no webhooks buddy, what are you up to? Add some using set-webhook (check -h for more help)", .{});
+        }
+
         defer webhook_list.deinit();
         std.log.info("received {d} webhooks", .{webhook_list.items.len});
         var timer = try std.time.Timer.start();

@@ -32,7 +32,13 @@ pub const WebhookList = struct {
         const data_path = try xdg.getDataPath(arena_alloc);
         const webhook_dir_path = try std.fmt.allocPrint(arena_alloc, "{s}/webhooks", .{data_path});
 
-        var webhook_dir = try std.fs.openDirAbsolute(webhook_dir_path, .{ .iterate = true });
+        var webhook_dir = std.fs.openDirAbsolute(webhook_dir_path, .{ .iterate = true }) catch |err| switch (err) {
+            error.FileNotFound => {
+                std.log.err("There are no webhooks buddy, what are you up to? Add some using set-webhook (check -h for more help)", .{});
+                return error.FileNotFound;
+            },
+            else => return err,
+        };
         defer webhook_dir.close();
 
         var webhook_dir_iterator = webhook_dir.iterate();
