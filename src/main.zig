@@ -99,6 +99,11 @@ pub fn main() !void {
         return;
     }
 
+    if (std.mem.eql(u8, cmd, "update") or std.mem.eql(u8, cmd, "--update")) {
+        _ = try utils.update(allocator);
+        return;
+    }
+
     if (std.mem.eql(u8, cmd, "help") or
         std.mem.eql(u8, cmd, "--help") or
         std.mem.eql(u8, cmd, "-h"))
