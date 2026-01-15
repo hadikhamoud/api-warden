@@ -24,3 +24,4 @@ sudo cp zig-out/bin/api-warden /usr/local/bin/
 
 - [ ] make stdout and err capturing optional 
 - [ ] add argparse class with helpers 
+- [ ] add custom body schema representation
