@@ -151,7 +151,7 @@ pub fn main() !void {
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});
             const response = try rest_methods.post(webhook.url, webhook.headers, payload, allocator);
-            defer allocator.free(response);
+            if (response) |r| allocator.free(r);
         }
     } else if (std.mem.eql(u8, cmd, "post")) {
         const headers = &[_]std.http.Header{
@@ -162,8 +162,12 @@ pub fn main() !void {
         const url = args[2];
         const body = if (args.len > 3) args[3] else "";
         const response = try rest_methods.post(url, headers, body, allocator);
-        defer allocator.free(response);
-        std.log.info("{s}", .{response});
+        if (response) |r| {
+            defer allocator.free(r);
+            std.log.info("{s}", .{r});
+        } else {
+            std.log.info("POST request sent (no response body)", .{});
+        }
     } else if (std.mem.eql(u8, cmd, "set-webhook")) {
         if (args.len < 3) {
             std.log.err("you didn't provide any arguments buddy", .{});
@@ -172,7 +176,7 @@ pub fn main() !void {
 
         const url = args[2];
         std.log.info("url: {s}", .{url});
-        const headers_str = if (args.len > 3) args[3] else "";
+        const headers_str = if (args.len > 3) args[3] else "{}";
         std.log.info("headers: {s}", .{headers_str});
         const headers_json = try std.json.parseFromSlice(std.json.Value, allocator, headers_str, .{});
         defer headers_json.deinit();
@@ -243,20 +247,15 @@ pub fn main() !void {
         const exit_code = result.exit_code orelse -999;
         const payload = try std.fmt.allocPrint(allocator,
             \\{{
-            \\  "event_type": "process_completed",
-            \\  "data": {{
-            \\    "time_taken": "{s}",
-            \\    "process_id": {d},
-            \\    "command": "{s}",
-            \\    "exit_code": {d}
-            \\  }}
+            \\  "username": "api-warden",
+            \\  "content": "process completed:\n command: {s}\n exit code: {d}\n duration: {s}"
             \\}}
-        , .{ time_taken, result.pid, full_command, exit_code });
+        , .{ full_command, exit_code, time_taken });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});
             const response = try rest_methods.post(webhook.url, webhook.headers, payload, allocator);
-            defer allocator.free(response);
+            if (response) |r| allocator.free(r);
         }
     }
     return;
