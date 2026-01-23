@@ -11,8 +11,8 @@ curl -fsSL https://raw.githubusercontent.com/hadikhamoud/api-warden/main/install
 ```
 
 ### Build from Source
-*Not compatible with less than 0.15*
-Requires [Zig 0.15+](https://ziglang.org/download/)
+*Not compatible with less than 0.15.2*
+Requires [Zig 0.15.2+](https://ziglang.org/download/)
 
 ```bash
 git clone https://github.com/hadikhamoud/api-warden.git
