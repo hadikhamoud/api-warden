@@ -19,6 +19,13 @@ const ProcessResult = struct {
     interrupted: bool,
 };
 
+fn jsonAlloc(alloc: std.mem.Allocator, value: anytype) ![]u8 {
+    var writer = try std.Io.Writer.Allocating.initCapacity(alloc, 256);
+    errdefer writer.deinit();
+    try std.json.Stringify.value(value, .{}, &writer.writer);
+    return try writer.toOwnedSlice();
+}
+
 fn startProcess(arguments: [][:0]u8, alloc: std.mem.Allocator) !ProcessResult {
     var child = std.process.Child.init(arguments, alloc);
     child.stderr_behavior = .Inherit;
@@ -137,16 +144,14 @@ pub fn main() !void {
         defer allocator.free(full_command);
 
         const exit_code = result.exit_code orelse -999;
-        const payload = try std.fmt.allocPrint(allocator,
-            \\{{
-            \\  "event_type": "process_completed",
-            \\  "data": {{
-            \\    "process_id": {d},
-            \\    "command": "{s}",
-            \\    "exit_code": {d}
-            \\  }}
-            \\}}
-        , .{ result.pid, full_command, exit_code });
+        const payload = try jsonAlloc(allocator, .{
+            .event_type = "process_completed",
+            .data = .{
+                .process_id = result.pid,
+                .command = full_command,
+                .exit_code = exit_code,
+            },
+        });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});
@@ -245,12 +250,12 @@ pub fn main() !void {
         defer allocator.free(full_command);
 
         const exit_code = result.exit_code orelse -999;
-        const payload = try std.fmt.allocPrint(allocator,
-            \\{{
-            \\  "username": "api-warden",
-            \\  "content": "process completed:\n command: {s}\n exit code: {d}\n duration: {s}"
-            \\}}
-        , .{ full_command, exit_code, time_taken });
+        const webhook_message = try std.fmt.allocPrint(allocator, "process completed:\n command: {s}\n exit code: {d}\n duration: {s}", .{ full_command, exit_code, time_taken });
+        defer allocator.free(webhook_message);
+        const payload = try jsonAlloc(allocator, .{
+            .username = "api-warden",
+            .content = webhook_message,
+        });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
             std.log.info("calling webhook {s}", .{webhook.url});

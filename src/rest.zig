@@ -20,13 +20,28 @@ pub fn post(uri: []const u8, headers: []const std.http.Header, payload: []const 
     var client = std.http.Client{ .allocator = alloc };
     defer client.deinit();
 
+    var request_headers = try std.ArrayList(std.http.Header).initCapacity(alloc, headers.len + 1);
+    defer request_headers.deinit(alloc);
+    try request_headers.appendSlice(alloc, headers);
+
+    var has_content_type = false;
+    for (headers) |header| {
+        if (std.ascii.eqlIgnoreCase(header.name, "Content-Type")) {
+            has_content_type = true;
+            break;
+        }
+    }
+    if (!has_content_type) {
+        try request_headers.append(alloc, .{ .name = "Content-Type", .value = "application/json" });
+    }
+
     var buffer = try std.Io.Writer.Allocating.initCapacity(alloc, 1024);
     errdefer buffer.deinit();
 
     const response = try client.fetch(.{
         .method = .POST,
         .location = .{ .url = uri },
-        .extra_headers = headers,
+        .extra_headers = request_headers.items,
         .payload = payload,
         .response_writer = &buffer.writer,
         .keep_alive = false,
