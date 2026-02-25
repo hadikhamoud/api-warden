@@ -253,8 +253,9 @@ pub fn main() !void {
         const webhook_message = try std.fmt.allocPrint(allocator, "process completed:\n command: {s}\n exit code: {d}\n duration: {s}", .{ full_command, exit_code, time_taken });
         defer allocator.free(webhook_message);
         const payload = try jsonAlloc(allocator, .{
-            .username = "api-warden",
+            .exit_code = exit_code,
             .content = webhook_message,
+            .username = "api-warden",
         });
         defer allocator.free(payload);
         for (webhook_list.items) |webhook| {
