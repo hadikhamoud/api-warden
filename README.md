@@ -26,3 +26,4 @@ sudo cp zig-out/bin/api-warden /usr/local/bin/
 - [ ] add argparse class with helpers 
 - [ ] add custom body schema representation
 - [ ] adding custom body support
+- [ ] default body discord-webhook compatible
