@@ -117,7 +117,7 @@ pub fn main() !void {
     {
         std.debug.print("API WARDEN\n", .{});
         std.debug.print("need help?\n", .{});
-        std.debug.print("just run a command after `api-warden`. ex: api-warden echo hello world\n", .{});
+        std.debug.print("just run a command after `api-warden`. ex: api-warden echo hello api-warden\n", .{});
         std.debug.print("set a webhook endpoint with headers using `set-webhook`. ex: api-warden set-webhook <url-endpoint> {{\"Authorization\": \"Bearer <token>\"}}\n", .{});
         std.debug.print("list webhooks using `list-webhook`. ex: api-warden list-webhook\n", .{});
         std.debug.print("after listing them, you can delete them using the ids by using `delete-webhook`. ex: api-warden delete-webhook <id>\n", .{});
