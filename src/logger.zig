@@ -31,6 +31,5 @@ pub fn structLogFn(
     const timestamp = time.Datetime.now();
     var buf: [32]u8 = undefined;
     const timestamp_str = timestamp.formatISO8601Buf(&buf, true) catch "INVALID_TIME";
-
     nosuspend stderr.interface.print(prefix ++ "{s} " ++ scope_prefix ++ format ++ "\n", .{timestamp_str} ++ args) catch return;
 }
