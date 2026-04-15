@@ -118,9 +118,9 @@ pub fn main() !void {
         std.debug.print("API WARDEN\n", .{});
         std.debug.print("need help?\n", .{});
         std.debug.print("just run a command after `api-warden`. ex: api-warden echo hello api-warden\n", .{});
-        std.debug.print("set a webhook endpoint with headers using `set-webhook`. ex: api-warden set-webhook <url-endpoint> {{\"Authorization\": \"Bearer <token>\"}}\n", .{});
-        std.debug.print("list webhooks using `list-webhook`. ex: api-warden list-webhook\n", .{});
-        std.debug.print("after listing them, you can delete them using the ids by using `delete-webhook`. ex: api-warden delete-webhook <id>\n", .{});
+        std.debug.print("set a webhook endpoint with headers using `set-webhook` or `-sw`. ex: api-warden set-webhook <url-endpoint> {{\"Authorization\": \"Bearer <token>\"}}\n", .{});
+        std.debug.print("list webhooks using `list-webhooks` or `-lsw`. ex: api-warden list-webhook\n", .{});
+        std.debug.print("after listing, you can delete them using the ids by using `delete-webhook` or ``. ex: api-warden delete-webhook <id>\n", .{});
         return;
     }
 
@@ -173,7 +173,9 @@ pub fn main() !void {
         } else {
             std.log.info("POST request sent (no response body)", .{});
         }
-    } else if (std.mem.eql(u8, cmd, "set-webhook")) {
+    } else if (std.mem.eql(u8, cmd, "set-webhook")
+                or std.mem.eql(u8, cmd, "-sw")
+) {
         if (args.len < 3) {
             std.log.err("you didn't provide any arguments buddy", .{});
             return;
@@ -208,7 +210,7 @@ pub fn main() !void {
         _ = try webhooks.writeWebhookDetails(webhook_details, allocator);
 
         std.log.info("WebhookDetails created with {d} headers\n", .{webhook_details.headers.len});
-    } else if (std.mem.eql(u8, cmd, "list-webhooks")) {
+    } else if (std.mem.eql(u8, cmd, "list-webhooks") or std.mem.eql(u8, cmd, "-lsw")) {
         var webhook_list = try WebhookList.load(allocator);
         defer webhook_list.deinit();
         for (webhook_list.items, 0..) |webhook, index| {
@@ -219,7 +221,10 @@ pub fn main() !void {
                 std.debug.print("\t {s}: {s}\n", .{ header.name, header.value });
             }
         }
-    } else if (std.mem.eql(u8, cmd, "delete-webhook")) {
+    } else if (std.mem.eql(u8, cmd, "delete-webhook") or std.mem.eql(u8, cmd, "-dw")
+
+        ) {
+
         if (args.len < 2) {
             std.log.err("Please specify which webhook id you want to delete", .{});
             return;
