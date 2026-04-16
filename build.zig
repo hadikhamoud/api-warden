@@ -23,10 +23,10 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Get version from git
+
     const version = getVersion(b);
 
-    // Define the executable
+
     const exe = b.addExecutable(.{
         .name = "api-warden",
         .root_module = b.createModule(.{
